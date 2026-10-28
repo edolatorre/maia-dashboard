@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Panel Maia Cruz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <!-- Login -->
+  <section id="login" class="login hidden">
+    <form id="login-form" class="login-card" autocomplete="on">
+      <p class="eyebrow">Panel privado</p>
+      <h1>Maia Cruz</h1>
+      <p id="login-msg" class="muted">Ingresa para administrar la cuenta.</p>
+      <label>Usuario<input name="user" autocomplete="username" required></label>
+      <label>Contraseña<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="btn primary" type="submit">Entrar</button>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- App -->
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <div class="brand"><span class="logo">M</span><div><b>Maia Cruz</b><small>@maiacruz.ia</small></div></div>
+      <nav id="tabs" class="tabs" aria-label="Secciones">
+        <button data-view="resumen" class="active">Resumen</button>
+        <button data-view="grilla">Grilla</button>
+        <button data-view="marcas">Marcas</button>
+        <button data-view="presupuesto">Presupuesto</button>
+        <button data-view="tareas">Tareas</button>
+        <button data-view="recursos">Recursos</button>
+      </nav>
+      <div class="top-actions">
+        <button id="btn-export" class="btn ghost small" title="Descargar respaldo de los datos">Exportar</button>
+        <label class="btn ghost small" title="Restaurar un respaldo">Importar<input id="file-import" type="file" accept="application/json" hidden></label>
+        <button id="btn-logout" class="btn ghost small">Salir</button>
+      </div>
+    </header>
+    <main id="view" class="view"></main>
+  </div>
+
+  <!-- Modal -->
+  <dialog id="modal">
+    <form id="modal-form" method="dialog">
+      <h2 id="modal-title"></h2>
+      <div id="modal-fields" class="fields"></div>
+      <div class="modal-actions">
+        <button type="button" id="modal-delete" class="btn danger small hidden">Eliminar</button>
+        <span class="spacer"></span>
+        <button type="button" id="modal-cancel" class="btn ghost">Cancelar</button>
+        <button type="submit" class="btn primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

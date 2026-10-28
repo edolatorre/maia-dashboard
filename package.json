@@ -1,0 +1,16 @@
+{
+  "name": "maia-dashboard",
+  "version": "1.0.0",
+  "description": "Panel de administración de Maia Cruz (@maiacruz.ia)",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
