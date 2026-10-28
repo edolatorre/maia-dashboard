@@ -112,7 +112,32 @@ $('#tabs').addEventListener('click', (e) => {
 
 // ---------- modal genérico ----------
 let modalHandler = null;
-function openModal({ title, fields, values = {}, onSave, onDelete }) {
+function modalGet(name) {
+  const el = $(`#modal-fields [name="${name}"]`);
+  return el ? el.value : '';
+}
+function modalSet(name, value) {
+  const el = $(`#modal-fields [name="${name}"]`);
+  if (el && value != null) el.value = value;
+}
+function openModal({ title, fields, values = {}, onSave, onDelete, extra = [] }) {
+  const ex = $('#modal-extra');
+  ex.innerHTML = '';
+  extra.forEach((b) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn small ' + (b.cls || 'ghost');
+    btn.textContent = b.label;
+    btn.onclick = async () => {
+      const old = btn.textContent;
+      btn.disabled = true;
+      if (b.busy) btn.textContent = b.busy;
+      try { await b.onClick({ get: modalGet, set: modalSet }); } catch (err) { alert(err.message); }
+      btn.disabled = false;
+      btn.textContent = old;
+    };
+    ex.appendChild(btn);
+  });
   $('#modal-title').textContent = title;
   $('#modal-fields').innerHTML = fields.map((f) => {
     const v = values[f.name] ?? f.default ?? '';
@@ -140,7 +165,7 @@ function openModal({ title, fields, values = {}, onSave, onDelete }) {
     });
     await onSave(out);
   };
-  $('#modal').showModal();
+  if (!$('#modal').open) $('#modal').showModal();
 }
 $('#modal-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -168,6 +193,8 @@ const POST_FIELDS = [
   { name: 'estado', label: 'Estado', type: 'select', options: ESTADOS_POST },
   { name: 'plataformas', label: 'Plataformas', default: 'FB + IG' },
   { name: 'higgsfield', label: 'ID Higgsfield' },
+  { name: 'guion', label: 'Guion (lo que dice Maia)', type: 'textarea', full: true },
+  { name: 'escena', label: 'Escena para Higgsfield', type: 'textarea', full: true },
   { name: 'texto', label: 'Texto del post', type: 'textarea', full: true },
   { name: 'link', label: 'Link publicado', full: true },
   { name: 'notas', label: 'Notas', type: 'textarea', full: true },
@@ -178,6 +205,57 @@ function editPost(p = {}) {
     fields: POST_FIELDS, values: p,
     onSave: (d) => saveItem('posts', p.id, d),
     onDelete: p.id ? () => deleteItem('posts', p.id) : null,
+    extra: [{
+      label: '✨ Generar con IA', busy: 'Escribiendo…', cls: 'ai',
+      onClick: async ({ get, set }) => {
+        const titulo = get('titulo');
+        if (!titulo) throw new Error('Escribe primero el título o tema.');
+        const r = await api('/api/ai/guion', { method: 'POST', body: { titulo, formato: get('formato'), notas: get('notas') } });
+        set('guion', r.guion); set('escena', r.escena); set('texto', r.texto);
+        toast('Listo: revisa y guarda');
+      },
+    }],
+  });
+}
+
+function copiar(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Copiado'));
+}
+async function abrirPitch(m) {
+  const r = await api(`/api/ai/pitch/${m.id}`, { method: 'POST' });
+  openModal({
+    title: 'Correo para ' + m.nombre,
+    fields: [
+      { name: 'asunto', label: 'Asunto', full: true },
+      { name: 'cuerpo', label: r.plantilla ? 'Cuerpo (plantilla; con la API key de Anthropic se personaliza con IA)' : 'Cuerpo (redactado con IA)', type: 'textarea', full: true },
+    ],
+    values: r,
+    onSave: async (d) => {
+      await saveItem('marcas', m.id, { estado: m.estado === 'Por contactar' ? 'Enviado' : m.estado, seguimiento: addDays(todayStr(), 5), ultimo_pitch: d.asunto });
+    },
+    extra: [
+      { label: 'Copiar texto', onClick: ({ get }) => copiar(get('asunto') + '\n\n' + get('cuerpo')) },
+      { label: 'Abrir en correo', onClick: ({ get }) => { window.location.href = `mailto:?subject=${encodeURIComponent(get('asunto'))}&body=${encodeURIComponent(get('cuerpo'))}`; } },
+    ],
+  });
+  const ta = $('#modal-fields [name="cuerpo"]');
+  if (ta) ta.style.minHeight = '260px';
+  if (r.aviso) toast('Usé la plantilla: ' + r.aviso);
+}
+function abrirPropuesta(m) {
+  const tarifas = DB.config.mediakit?.tarifas || [];
+  openModal({
+    title: 'Propuesta para ' + m.nombre,
+    fields: [
+      ...tarifas.map((t, i) => ({ name: 't' + i, label: `${t.nombre} · ${t.precio}`, type: 'checkbox', full: true, default: i === 0 })),
+      { name: 'monto', label: 'Total propuesto (opcional, ej. US$250)', full: true },
+    ],
+    values: { monto: m.monto },
+    onSave: async (d) => {
+      const sel = tarifas.map((_, i) => (d['t' + i] ? i : null)).filter((x) => x !== null);
+      if (d.monto !== (m.monto || '')) await saveItem('marcas', m.id, { monto: d.monto });
+      window.open(`/propuesta/${encodeURIComponent(m.id)}?paquetes=${sel.join(',')}`, '_blank');
+    },
   });
 }
 const MARCA_FIELDS = [
@@ -197,6 +275,10 @@ function editMarca(m = {}) {
     fields: MARCA_FIELDS, values: m,
     onSave: (d) => saveItem('marcas', m.id, d),
     onDelete: m.id ? () => deleteItem('marcas', m.id) : null,
+    extra: m.id ? [
+      { label: '✉️ Correo de pitch', busy: 'Redactando…', cls: 'ai', onClick: () => abrirPitch(m) },
+      { label: '📄 Propuesta PDF', onClick: () => abrirPropuesta(m) },
+    ] : [],
   });
 }
 function categorias() { return (DB.config.presupuesto || []).map((c) => c.categoria).concat(['Colaboración', 'Otro ingreso']); }
@@ -331,9 +413,10 @@ function alertas() {
 function render() {
   if (!DB) return;
   const v = $('#view');
-  const fn = { resumen: vResumen, grilla: vGrilla, marcas: vMarcas, presupuesto: vPresupuesto, tareas: vTareas, recursos: vRecursos }[view];
+  const fn = { resumen: vResumen, grilla: vGrilla, marcas: vMarcas, presupuesto: vPresupuesto, ideas: vIdeas, contenido: vContenido, tareas: vTareas, recursos: vRecursos, ajustes: vAjustes }[view];
   v.innerHTML = fn();
   bind(v);
+  if (view === 'ajustes') loadAjustes();
 }
 
 function postRow(p) {
@@ -564,6 +647,185 @@ function vRecursos() {
   }).join('') || '<p class="empty">Sin recursos.</p>'}</div></div>`;
 }
 
+// ---------- ideas ----------
+let ideaFiltro = 'Todas';
+const CATS_IDEA = ['Surf', 'Outdoor', 'Comida sana', 'Viajes', 'Detrás de cámara', 'Marca'];
+function editIdea(i = {}) {
+  openModal({
+    title: i.id ? 'Editar idea' : 'Nueva idea',
+    fields: [
+      { name: 'titulo', label: 'Idea', full: true, required: true },
+      { name: 'categoria', label: 'Categoría', type: 'select', options: CATS_IDEA },
+      { name: 'formato', label: 'Formato', type: 'select', options: ['Reel', 'Carrusel', 'Foto', 'Story'] },
+      { name: 'estado', label: 'Estado', type: 'select', options: ['Nueva', 'Usada', 'Descartada'] },
+      { name: 'notas', label: 'Gancho o notas', type: 'textarea', full: true },
+    ],
+    values: i,
+    onSave: (d) => saveItem('ideas', i.id, d),
+    onDelete: i.id ? () => deleteItem('ideas', i.id) : null,
+  });
+}
+function proximoDiaLibre() {
+  let d = addDays(todayStr(), 1);
+  for (let k = 0; k < 60; k++, d = addDays(d, 1)) if (!DB.posts.some((p) => p.fecha === d)) return d;
+  return '';
+}
+async function ideaAGrilla(id) {
+  const i = DB.ideas.find((x) => x.id === id);
+  const fecha = proximoDiaLibre();
+  await api('/api/posts', { method: 'POST', body: { titulo: i.titulo, fecha, hora: '19:30', formato: i.formato || 'Reel', estado: 'Idea', plataformas: 'FB + IG', notas: i.notas || '' } });
+  await saveItem('ideas', id, { estado: 'Usada' });
+  toast(`Agregada a la grilla el ${fecha}`);
+}
+function vIdeas() {
+  const cats = ['Todas', ...CATS_IDEA];
+  const list = DB.ideas.filter((i) => ideaFiltro === 'Todas' || i.categoria === ideaFiltro)
+    .sort((a, b) => (a.estado === 'Nueva' ? 0 : 1) - (b.estado === 'Nueva' ? 0 : 1));
+  const nuevas = DB.ideas.filter((i) => i.estado === 'Nueva').length;
+  return `
+  <div class="section-head">
+    <div><p class="eyebrow">${nuevas} ideas disponibles</p><h2>Banco de ideas</h2></div>
+    <div class="cal-head"><button class="btn ai small" data-act="ideas-ai">✨ Sugerir 10 con IA</button><button class="btn primary small" data-act="idea">+ Idea</button></div>
+  </div>
+  <div class="chips">${cats.map((c) => `<button class="chip ${c === ideaFiltro ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+  <div class="ideas">${list.map((i) => `<div class="idea ${esc(i.estado)}">
+    <small class="muted">${esc(i.categoria)} · ${esc(i.formato)}${i.origen === 'IA' ? ' · IA' : ''}${i.estado !== 'Nueva' ? ' · ' + esc(i.estado) : ''}</small>
+    <b>${esc(i.titulo)}</b>
+    ${i.notas ? `<small>${esc(i.notas)}</small>` : ''}
+    <div class="acts">${i.estado === 'Nueva' ? `<button class="btn primary small" data-idea-grilla="${i.id}">A la grilla</button>` : ''}<button class="btn ghost small" data-idea="${i.id}">Editar</button></div>
+  </div>`).join('') || '<p class="empty">No hay ideas en esta categoría.</p>'}</div>`;
+}
+
+// ---------- contenido (métricas de Meta) ----------
+function vContenido() {
+  const m = DB.meta;
+  if (!m) {
+    return `<div class="section-head"><div><p class="eyebrow">Instagram y Meta Ads</p><h2>Contenido</h2></div></div>
+    <div class="card"><p>Todavía no hay datos de Meta. Pega el token en <b>Ajustes → Integraciones</b> y el panel traerá solo los seguidores, el alcance de cada post y el gasto en anuncios cada 6 horas.</p>
+    <button class="btn primary small" data-goto="ajustes">Ir a Ajustes</button></div>`;
+  }
+  const media = m.media || [];
+  const ads = m.ads;
+  const fmt = (n) => (n == null ? '—' : fmtInt(n));
+  return `
+  <div class="section-head">
+    <div><p class="eyebrow">Sincronizado ${esc((m.fecha || '').replace('T', ' ').slice(0, 16))}</p><h2>Contenido</h2></div>
+    <button class="btn ghost small" data-act="sync">Sincronizar ahora</button>
+  </div>
+  ${(m.avisos || []).length ? `<div class="alerts">${m.avisos.map((a) => `<div class="alert">${esc(a)}</div>`).join('')}</div>` : ''}
+  <div class="grid kpis">
+    <div class="card kpi"><div class="label">Seguidores IG</div><div class="value">${fmt(m.instagram?.followers_count)}</div><div class="sub">${fmt(m.instagram?.media_count)} publicaciones</div></div>
+    <div class="card kpi"><div class="label">Alcance 7 días</div><div class="value">${fmt(m.semana?.reach)}</div><div class="sub">${fmt(m.semana?.profile_views)} visitas al perfil</div></div>
+    <div class="card kpi"><div class="label">Interacciones 7 días</div><div class="value">${fmt(m.semana?.total_interactions)}</div><div class="sub">${fmt(m.semana?.accounts_engaged)} cuentas</div></div>
+    <div class="card kpi"><div class="label">Seguidores FB</div><div class="value">${fmt(m.facebook?.seguidores)}</div><div class="sub">${esc(m.facebook?.nombre || '')}</div></div>
+  </div>
+  <div class="card"><h3>Publicaciones</h3><div class="table-wrap"><table>
+    <thead><tr><th></th><th>Fecha</th><th>Tipo</th><th>Texto</th><th class="num">Alcance</th><th class="num">Vistas</th><th class="num">Likes</th><th class="num">Coment.</th><th class="num">Guard.</th><th class="num">Compart.</th></tr></thead>
+    <tbody>${media.map((x) => `<tr>
+      <td>${/^https:/.test(x.imagen || '') ? `<a href="${esc(x.link)}" target="_blank" rel="noopener"><img class="thumb" src="${esc(x.imagen)}" alt="" loading="lazy"></a>` : ''}</td>
+      <td>${esc((x.fecha || '').slice(0, 10))}</td><td>${esc(x.tipo)}</td><td style="max-width:260px"><small>${esc((x.texto || '').slice(0, 90))}</small></td>
+      <td class="num"><b>${fmt(x.alcance)}</b></td><td class="num">${fmt(x.vistas)}</td><td class="num">${fmt(x.likes)}</td><td class="num">${fmt(x.comentarios)}</td><td class="num">${fmt(x.guardados)}</td><td class="num">${fmt(x.compartidos)}</td></tr>`).join('') || '<tr><td colspan="10" class="empty">Sin publicaciones.</td></tr>'}</tbody>
+  </table></div></div>
+  <div class="card"><h3>Meta Ads este mes</h3>
+    ${ads ? `<p>Gasto: <b>${esc(ads.moneda)} ${fmtInt(ads.gasto_mes)}</b> · alcance ${fmtInt(ads.alcance)} · ${fmtInt(ads.clics)} clics. Se registra solo en Presupuesto.</p>
+    ${ads.campanas.length ? `<div class="table-wrap"><table><thead><tr><th>Campaña</th><th class="num">Gasto</th><th class="num">Alcance</th><th class="num">Clics</th><th class="num">Costo por clic</th></tr></thead><tbody>
+    ${ads.campanas.map((c) => `<tr><td>${esc(c.nombre)}</td><td class="num">${fmtInt(c.gasto)}</td><td class="num">${fmtInt(c.alcance)}</td><td class="num">${fmtInt(c.clics)}</td><td class="num">${c.clics ? fmtInt(c.gasto / c.clics) : '—'}</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="empty">Sin campañas activas este mes.</p>'}` : '<p class="empty">Sin datos de anuncios.</p>'}
+  </div>`;
+}
+
+// ---------- ajustes ----------
+function vAjustes() {
+  const mk = DB.config.mediakit || {};
+  const tarifas = (mk.tarifas || []).map((t) => [t.nombre, t.precio, t.detalle].join(' | ')).join('\n');
+  return `
+  <div class="section-head"><div><p class="eyebrow">Configuración</p><h2>Ajustes</h2></div></div>
+  <div class="settings-grid">
+    <form class="card stack" id="f-meta" autocomplete="off">
+      <h3>Meta (Instagram, Facebook y Ads)</h3>
+      <span id="st-meta" class="status">Revisando…</span>
+      <p class="muted" style="margin:0">Pega el token del usuario del sistema <b>maia-panel</b>. Queda guardado solo en este servidor y nunca se muestra completo.</p>
+      <label>Token de Meta<input type="password" name="meta_token" placeholder="Pega aquí el token" autocomplete="off"></label>
+      <div class="cal-head"><button class="btn primary small" type="submit">Guardar token</button><button class="btn ghost small" type="button" data-act="sync">Sincronizar ahora</button><button class="btn ghost small" type="button" data-act="meta-off">Quitar</button></div>
+      <small id="meta-info" class="muted"></small>
+    </form>
+    <form class="card stack" id="f-ai" autocomplete="off">
+      <h3>IA para guiones e ideas (Anthropic)</h3>
+      <span id="st-ai" class="status">Revisando…</span>
+      <p class="muted" style="margin:0">Crea una API key en console.anthropic.com y pégala aquí. Se usa para guiones, ideas y correos de pitch.</p>
+      <label>API key de Anthropic<input type="password" name="anthropic_key" placeholder="Pega aquí la API key" autocomplete="off"></label>
+      <label>Modelo<input name="ai_model" value="${esc(DB.config.ai_model || 'claude-sonnet-5-5')}"></label>
+      <div class="cal-head"><button class="btn primary small" type="submit">Guardar</button><button class="btn ghost small" type="button" data-act="ai-off">Quitar key</button></div>
+    </form>
+    <form class="card stack" id="f-mk">
+      <h3>Media kit</h3>
+      <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="publico" ${mk.publico ? 'checked' : ''}> Público en panel.maiacruz.cl/mediakit</label>
+      <label>Nicho<input name="nicho" value="${esc(mk.nicho || '')}"></label>
+      <label>Bio<textarea name="bio">${esc(mk.bio || '')}</textarea></label>
+      <label>Etiquetas (separadas por coma)<input name="etiquetas" value="${esc((mk.etiquetas || []).join(', '))}"></label>
+      <label>Por qué Maia (una por línea)<textarea name="ventajas">${esc((mk.ventajas || []).join('\n'))}</textarea></label>
+      <label>Tarifas (una por línea: Nombre | Precio | Detalle)<textarea name="tarifas" style="min-height:130px">${esc(tarifas)}</textarea></label>
+      <label>Correo de contacto<input name="contacto" value="${esc(mk.contacto || '')}"></label>
+      <div class="cal-head"><button class="btn primary small" type="submit">Guardar media kit</button><a class="btn ghost small" href="/mediakit" target="_blank" rel="noopener">Ver media kit</a></div>
+    </form>
+    <div class="card stack">
+      <h3>General</h3>
+      <p class="muted" style="margin:0">Créditos de Higgsfield, presupuesto, tipo de cambio e inicio del plan.</p>
+      <div><button class="btn ghost small" data-act="config">Editar ajustes generales</button></div>
+      <h3 style="margin-top:10px">Actualización</h3>
+      <p class="muted" style="margin:0">Versión instalada: <b id="version">…</b></p>
+      <div><button class="btn ghost small" data-act="update">Buscar e instalar actualización</button></div>
+    </div>
+  </div>`;
+}
+async function loadAjustes() {
+  try {
+    const st = await api('/api/integrations');
+    const sm = $('#st-meta'), sa = $('#st-ai');
+    if (sm) {
+      sm.className = 'status ' + (st.meta.configured ? 'on' : '');
+      sm.textContent = st.meta.configured ? `Conectado (${st.meta.hint})` : 'Sin conectar';
+      $('#meta-info').textContent = st.meta.error ? 'Error: ' + st.meta.error : st.meta.last_sync ? 'Última sincronización: ' + st.meta.last_sync.replace('T', ' ').slice(0, 16) : '';
+    }
+    if (sa) { sa.className = 'status ' + (st.anthropic.configured ? 'on' : ''); sa.textContent = st.anthropic.configured ? `Conectado (${st.anthropic.hint})` : 'Sin conectar'; }
+  } catch { /* noop */ }
+  api('/api/version').then((v) => { const el = $('#version'); if (el) el.textContent = `${v.commit}${v.fecha ? ' · ' + v.fecha.slice(0, 16) : ''}`; }).catch(() => {});
+}
+async function submitAjustes(form) {
+  const f = new FormData(form);
+  if (form.id === 'f-meta') {
+    const t = (f.get('meta_token') || '').trim();
+    if (!t) throw new Error('Pega el token primero.');
+    await api('/api/integrations', { method: 'PUT', body: { meta_token: t } });
+    form.reset();
+    toast('Token guardado. Sincronizando…');
+    setTimeout(async () => { await reload(); }, 8000);
+  }
+  if (form.id === 'f-ai') {
+    const body = { ai_model: f.get('ai_model') };
+    const k = (f.get('anthropic_key') || '').trim();
+    if (k) body.anthropic_key = k;
+    await api('/api/integrations', { method: 'PUT', body });
+    form.reset();
+    toast('Guardado');
+  }
+  if (form.id === 'f-mk') {
+    const tarifas = String(f.get('tarifas') || '').split('\n').map((l) => l.split('|').map((x) => x.trim())).filter((x) => x[0]).map(([nombre, precio = '', detalle = '']) => ({ nombre, precio, detalle }));
+    const mediakit = {
+      ...(DB.config.mediakit || {}),
+      publico: f.get('publico') === 'on',
+      nicho: f.get('nicho'), bio: f.get('bio'), contacto: f.get('contacto'),
+      etiquetas: String(f.get('etiquetas') || '').split(',').map((x) => x.trim()).filter(Boolean),
+      ventajas: String(f.get('ventajas') || '').split('\n').map((x) => x.trim()).filter(Boolean),
+      tarifas,
+    };
+    await api('/api/config', { method: 'PUT', body: { mediakit } });
+    toast('Media kit guardado');
+    await reload();
+  }
+  loadAjustes();
+}
+
 // ---------- eventos ----------
 function bind(root) {
   root.onclick = async (e) => {
@@ -576,11 +838,32 @@ function bind(root) {
     if (t.closest('select')) return;
     const act = t.closest('[data-act]')?.dataset.act;
     if (act) {
-      ({ post: () => editPost(), marca: () => editMarca(), mov: () => editMov(), tarea: () => editTarea({ etapa: 'Presencia' }), recurso: () => editRecurso(), metrica: () => editMetrica(), config: editConfig, presupuesto: editPresupuesto }[act])();
+      const btn = t.closest('[data-act]');
+      const run = async (fn, busy) => {
+        const old = btn.textContent; btn.disabled = true; if (busy) btn.textContent = busy;
+        try { await fn(); } catch (err) { alert(err.message); }
+        btn.disabled = false; btn.textContent = old;
+      };
+      const acts = {
+        post: () => editPost(), marca: () => editMarca(), mov: () => editMov(), tarea: () => editTarea({ etapa: 'Presencia' }),
+        recurso: () => editRecurso(), metrica: () => editMetrica(), config: editConfig, presupuesto: editPresupuesto, idea: () => editIdea({ estado: 'Nueva', formato: 'Reel', categoria: 'Surf' }),
+        'ideas-ai': () => run(async () => { const r = await api('/api/ai/ideas', { method: 'POST', body: { categoria: ideaFiltro === 'Todas' ? '' : ideaFiltro } }); toast(`${r.nuevas.length} ideas nuevas`); await reload(); }, 'Pensando…'),
+        sync: () => run(async () => { try { await api('/api/integrations/meta/sync', { method: 'POST' }); toast('Datos de Meta actualizados'); } finally { await reload(); } }, 'Sincronizando…'),
+        'meta-off': () => run(async () => { if (!confirm('¿Quitar el token de Meta?')) return; await api('/api/integrations', { method: 'PUT', body: { meta_token: '' } }); loadAjustes(); }),
+        'ai-off': () => run(async () => { if (!confirm('¿Quitar la API key?')) return; await api('/api/integrations', { method: 'PUT', body: { anthropic_key: '' } }); loadAjustes(); }),
+        update: () => run(async () => { const r = await api('/api/admin/update', { method: 'POST' }); alert(r.message); if (r.updated) setTimeout(() => location.reload(), 6000); }, 'Actualizando…'),
+      };
+      acts[act]();
       return;
     }
     const go = t.closest('[data-goto]')?.dataset.goto;
     if (go) { document.querySelector(`#tabs [data-view="${go}"]`).click(); return; }
+    const cat = t.closest('[data-cat]')?.dataset.cat;
+    if (cat) { ideaFiltro = cat; render(); return; }
+    const ig = t.closest('[data-idea-grilla]')?.dataset.ideaGrilla;
+    if (ig) { try { await ideaAGrilla(ig); } catch (err) { alert(err.message); } return; }
+    const iid = t.closest('[data-idea]')?.dataset.idea;
+    if (iid) return editIdea(DB.ideas.find((x) => x.id === iid));
     const pid = t.closest('[data-post]')?.dataset.post;
     if (pid) return editPost(DB.posts.find((p) => p.id === pid));
     const day = t.closest('[data-day]')?.dataset.day;
@@ -597,6 +880,11 @@ function bind(root) {
     if (cal) { const [y, m] = calMonth.split('-').map(Number); calMonth = ymd(new Date(y, m - 1 + Number(cal), 1)).slice(0, 7); render(); return; }
     const bm = t.closest('[data-bm]')?.dataset.bm;
     if (bm) { const [y, m] = budgetMonth.split('-').map(Number); budgetMonth = ymd(new Date(y, m - 1 + Number(bm), 1)).slice(0, 7); render(); }
+  };
+  root.onsubmit = async (e) => {
+    if (!e.target.id?.startsWith('f-')) return;
+    e.preventDefault();
+    try { await submitAjustes(e.target); } catch (err) { alert(err.message); }
   };
   root.onchange = async (e) => {
     const t = e.target;

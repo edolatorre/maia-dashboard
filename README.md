@@ -21,3 +21,14 @@ ADMIN_PASSWORD=algo-seguro npm start
 ## Datos
 
 Al primer arranque se carga `seed.json`. En el plan gratis de Render el disco no es persistente: usa **Exportar** para descargar un respaldo y **Importar** para restaurarlo.
+
+## Integraciones (Ajustes → Integraciones)
+
+- **Meta**: token de usuario del sistema con `instagram_basic`, `instagram_manage_insights`, `pages_show_list`, `pages_read_engagement`, `read_insights`, `ads_read`, `business_management`. Sincroniza cada 6 horas.
+- **Anthropic**: API key para guiones, ideas y correos de pitch.
+
+Los tokens se guardan en `DATA_DIR/secrets.json` (permisos 600) y nunca se devuelven por la API.
+
+## Actualizar el servidor
+
+Desde el panel: **Ajustes → Buscar e instalar actualización** (hace `git pull` y reinicia).

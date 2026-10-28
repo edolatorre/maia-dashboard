@@ -7,69 +7,616 @@
     "tipo_cambio_clp": 950,
     "inicio_plan": "2026-10-27",
     "metas": [
-      { "dia": 30, "seguidores": 1000, "etapa": "Presencia" },
-      { "dia": 60, "seguidores": 2000, "etapa": "Prueba social" },
-      { "dia": 90, "seguidores": 3000, "etapa": "Primera campaña" }
+      {
+        "dia": 30,
+        "seguidores": 1000,
+        "etapa": "Presencia"
+      },
+      {
+        "dia": 60,
+        "seguidores": 2000,
+        "etapa": "Prueba social"
+      },
+      {
+        "dia": 90,
+        "seguidores": 3000,
+        "etapa": "Primera campaña"
+      }
     ],
     "presupuesto": [
-      { "categoria": "Higgsfield fotos", "usd": 15 },
-      { "categoria": "Higgsfield reels", "usd": 80 },
-      { "categoria": "Meta Ads", "usd": 250 },
-      { "categoria": "Sorteos y productos", "usd": 50 },
-      { "categoria": "Dominio y web", "usd": 1 },
-      { "categoria": "Otros", "usd": 4 }
-    ]
+      {
+        "categoria": "Higgsfield fotos",
+        "usd": 15
+      },
+      {
+        "categoria": "Higgsfield reels",
+        "usd": 80
+      },
+      {
+        "categoria": "Meta Ads",
+        "usd": 250
+      },
+      {
+        "categoria": "Sorteos y productos",
+        "usd": 50
+      },
+      {
+        "categoria": "Dominio y web",
+        "usd": 1
+      },
+      {
+        "categoria": "Otros",
+        "usd": 4
+      }
+    ],
+    "ai_model": "claude-sonnet-5-5",
+    "meta": {
+      "page_id": "1393448887191181",
+      "ig_user_id": "17841436248985036",
+      "ad_account_id": "1106447822144902"
+    },
+    "mediakit": {
+      "publico": false,
+      "nicho": "Surf, outdoor, comida sana y viajes por Chile",
+      "bio": "Maia es una creadora digital chilena de 28 años: surfista, viajera relajada y fan de la comida sana. Comparte rutas, playas, cerros y datos para disfrutar Chile al aire libre.",
+      "etiquetas": [
+        "Surf",
+        "Outdoor",
+        "Comida sana",
+        "Viajes por Chile",
+        "Contenido con IA"
+      ],
+      "ventajas": [
+        "Contenido a medida en 48 horas, sin viajes ni agenda",
+        "Imagen de marca siempre consistente y segura",
+        "Voz chilena propia para reels",
+        "Transparente: se declara IA en cada publicación",
+        "Reporte de resultados a los 7 días"
+      ],
+      "contacto": "hola@maiacruz.cl",
+      "tarifas": [
+        {
+          "nombre": "Paquete piloto",
+          "precio": "desde US$100",
+          "detalle": "1 reel de 10 s + 3 stories"
+        },
+        {
+          "nombre": "Reel",
+          "precio": "desde US$150",
+          "detalle": "Reel de 10 s con voz de Maia, publicado en IG y FB"
+        },
+        {
+          "nombre": "Carrusel",
+          "precio": "desde US$90",
+          "detalle": "Carrusel de 3 a 5 imágenes"
+        },
+        {
+          "nombre": "Stories",
+          "precio": "desde US$40",
+          "detalle": "Set de 3 stories con link"
+        },
+        {
+          "nombre": "Embajadora mensual",
+          "precio": "desde US$400/mes",
+          "detalle": "2 reels + 2 carruseles + stories semanales"
+        }
+      ]
+    }
   },
   "posts": [
-    { "id": "p01", "fecha": "2026-10-28", "hora": "19:30", "formato": "Reel", "titulo": "Punta de Lobos, Pichilemu", "estado": "Programado", "plataformas": "FB + IG", "higgsfield": "4b1654cc-3142-4d3c-990d-3e46d087033e", "texto": "Rutas de Maia 🌊 Punta de Lobos, Pichilemu.\nUna de las olas más famosas de Chile 🤙 Tip: llega temprano, que después se llena.\n¿Y ustedes, dónde surfean? Los leo 👇\n\n✨ Maia es un personaje digital creado con IA.\n\n#surfchile #pichilemu #puntadelobos #outdoorchile #rutasdemaia", "notas": "Promocionar con Meta Ads el jueves 29 (CLP 60.000 / 7 días)." },
-    { "id": "p02", "fecha": "2026-10-30", "hora": "19:30", "formato": "Reel", "titulo": "Bowl post-surf", "estado": "Guion", "plataformas": "FB + IG", "higgsfield": "2e026bfc (keyframe)", "texto": "", "notas": "Falta generar con voz chilena: requiere créditos." },
-    { "id": "p03", "fecha": "2026-11-01", "hora": "11:00", "formato": "Carrusel", "titulo": "Finde en Pichilemu", "estado": "Programado", "plataformas": "IG", "higgsfield": "0a5314db / 34a0466c / 61e2bf7d", "texto": "", "notas": "" },
-    { "id": "p04", "fecha": "2026-11-02", "hora": "19:30", "formato": "Reel", "titulo": "Cajón del Maipo", "estado": "Programado", "plataformas": "FB + IG", "higgsfield": "679b614b-d233-45c6-8f26-f556fc2c8e0e", "texto": "Rutas de Maia ⛰️ Cajón del Maipo.\nCerros, río y aire puro, cerquita de Santiago. Perfecto para desconectarse un finde.\n¿Se vienen? 👇\n\n✨ Maia es un personaje digital creado con IA.\n\n#cajondelmaipo #trekkingchile #outdoorchile #santiagodechile #rutasdemaia", "notas": "" },
-    { "id": "p05", "fecha": "2026-11-04", "hora": "19:30", "formato": "Reel", "titulo": "Matanzas", "estado": "Guion", "plataformas": "FB + IG", "higgsfield": "3347ba1a (keyframe)", "texto": "", "notas": "Falta generar: requiere créditos." },
-    { "id": "p06", "fecha": "2026-11-06", "hora": "19:30", "formato": "Reel", "titulo": "Qué llevo en la mochila", "estado": "Guion", "plataformas": "FB + IG", "higgsfield": "40a6fc36 (keyframe)", "texto": "", "notas": "Buen formato para pitch a snacks y outdoor." },
-    { "id": "p07", "fecha": "2026-11-08", "hora": "11:00", "formato": "Carrusel", "titulo": "Domingo de feria", "estado": "Programado", "plataformas": "IG", "higgsfield": "69624516 / 0b68b72f / 17ae9761", "texto": "", "notas": "" },
-    { "id": "p08", "fecha": "2026-11-10", "hora": "19:30", "formato": "Reel", "titulo": "Maia responde: cómo empezar a surfear", "estado": "Idea", "plataformas": "FB + IG", "higgsfield": "34873c0e (keyframe)", "texto": "", "notas": "Falta escribir guion." },
-    { "id": "p09", "fecha": "", "hora": "", "formato": "Reel", "titulo": "Carnada, Concón (collab)", "estado": "Aprobación", "plataformas": "IG collab", "higgsfield": "046120cd", "texto": "", "notas": "Esperando OK del dueño antes de publicar como Collab." },
-    { "id": "p10", "fecha": "", "hora": "", "formato": "Reel", "titulo": "Hotel Maró (collab)", "estado": "Aprobación", "plataformas": "IG collab", "higgsfield": "16dd3067-3e40-44b8-aa29-7454948adfce", "texto": "", "notas": "No publicar sin aprobación del hotel." }
+    {
+      "id": "p01",
+      "fecha": "2026-10-28",
+      "hora": "19:30",
+      "formato": "Reel",
+      "titulo": "Punta de Lobos, Pichilemu",
+      "estado": "Programado",
+      "plataformas": "FB + IG",
+      "higgsfield": "4b1654cc-3142-4d3c-990d-3e46d087033e",
+      "texto": "Rutas de Maia 🌊 Punta de Lobos, Pichilemu.\nUna de las olas más famosas de Chile 🤙 Tip: llega temprano, que después se llena.\n¿Y ustedes, dónde surfean? Los leo 👇\n\n✨ Maia es un personaje digital creado con IA.\n\n#surfchile #pichilemu #puntadelobos #outdoorchile #rutasdemaia",
+      "notas": "Promocionar con Meta Ads el jueves 29 (CLP 60.000 / 7 días)."
+    },
+    {
+      "id": "p02",
+      "fecha": "2026-10-30",
+      "hora": "19:30",
+      "formato": "Reel",
+      "titulo": "Bowl post-surf",
+      "estado": "Guion",
+      "plataformas": "FB + IG",
+      "higgsfield": "2e026bfc (keyframe)",
+      "texto": "",
+      "notas": "Falta generar con voz chilena: requiere créditos."
+    },
+    {
+      "id": "p03",
+      "fecha": "2026-11-01",
+      "hora": "11:00",
+      "formato": "Carrusel",
+      "titulo": "Finde en Pichilemu",
+      "estado": "Programado",
+      "plataformas": "IG",
+      "higgsfield": "0a5314db / 34a0466c / 61e2bf7d",
+      "texto": "",
+      "notas": ""
+    },
+    {
+      "id": "p04",
+      "fecha": "2026-11-02",
+      "hora": "19:30",
+      "formato": "Reel",
+      "titulo": "Cajón del Maipo",
+      "estado": "Programado",
+      "plataformas": "FB + IG",
+      "higgsfield": "679b614b-d233-45c6-8f26-f556fc2c8e0e",
+      "texto": "Rutas de Maia ⛰️ Cajón del Maipo.\nCerros, río y aire puro, cerquita de Santiago. Perfecto para desconectarse un finde.\n¿Se vienen? 👇\n\n✨ Maia es un personaje digital creado con IA.\n\n#cajondelmaipo #trekkingchile #outdoorchile #santiagodechile #rutasdemaia",
+      "notas": ""
+    },
+    {
+      "id": "p05",
+      "fecha": "2026-11-04",
+      "hora": "19:30",
+      "formato": "Reel",
+      "titulo": "Matanzas",
+      "estado": "Guion",
+      "plataformas": "FB + IG",
+      "higgsfield": "3347ba1a (keyframe)",
+      "texto": "",
+      "notas": "Falta generar: requiere créditos."
+    },
+    {
+      "id": "p06",
+      "fecha": "2026-11-06",
+      "hora": "19:30",
+      "formato": "Reel",
+      "titulo": "Qué llevo en la mochila",
+      "estado": "Guion",
+      "plataformas": "FB + IG",
+      "higgsfield": "40a6fc36 (keyframe)",
+      "texto": "",
+      "notas": "Buen formato para pitch a snacks y outdoor."
+    },
+    {
+      "id": "p07",
+      "fecha": "2026-11-08",
+      "hora": "11:00",
+      "formato": "Carrusel",
+      "titulo": "Domingo de feria",
+      "estado": "Programado",
+      "plataformas": "IG",
+      "higgsfield": "69624516 / 0b68b72f / 17ae9761",
+      "texto": "",
+      "notas": ""
+    },
+    {
+      "id": "p08",
+      "fecha": "2026-11-10",
+      "hora": "19:30",
+      "formato": "Reel",
+      "titulo": "Maia responde: cómo empezar a surfear",
+      "estado": "Idea",
+      "plataformas": "FB + IG",
+      "higgsfield": "34873c0e (keyframe)",
+      "texto": "",
+      "notas": "Falta escribir guion."
+    },
+    {
+      "id": "p09",
+      "fecha": "",
+      "hora": "",
+      "formato": "Reel",
+      "titulo": "Carnada, Concón (collab)",
+      "estado": "Aprobación",
+      "plataformas": "IG collab",
+      "higgsfield": "046120cd",
+      "texto": "",
+      "notas": "Esperando OK del dueño antes de publicar como Collab."
+    },
+    {
+      "id": "p10",
+      "fecha": "",
+      "hora": "",
+      "formato": "Reel",
+      "titulo": "Hotel Maró (collab)",
+      "estado": "Aprobación",
+      "plataformas": "IG collab",
+      "higgsfield": "16dd3067-3e40-44b8-aa29-7454948adfce",
+      "texto": "",
+      "notas": "No publicar sin aprobación del hotel."
+    }
   ],
   "marcas": [
-    { "id": "m01", "nombre": "Hotel Alaia", "categoria": "Hotel", "estado": "Por contactar", "prioridad": "1", "contacto": "DM Instagram / formulario web", "idea": "Un finde en Alaia: reel + stories, canje por estadía", "monto": "", "seguimiento": "", "notas": "12 habitaciones frente a Punta de Lobos." },
-    { "id": "m02", "nombre": "Surf Lodge Posada Punta de Lobos", "categoria": "Hotel", "estado": "Por contactar", "prioridad": "1", "contacto": "DM Instagram", "idea": "Dónde dormir si vas a surfear Lobos", "monto": "", "seguimiento": "", "notas": "" },
-    { "id": "m03", "nombre": "Altiplánico Cajón del Maipo", "categoria": "Hotel", "estado": "Por contactar", "prioridad": "1", "contacto": "DM Instagram / formulario web", "idea": "Continuación del reel del Cajón: dónde quedarse", "monto": "", "seguimiento": "", "notas": "9 habitaciones junto al río, San Alfonso." },
-    { "id": "m04", "nombre": "Doite", "categoria": "Outdoor", "estado": "Por contactar", "prioridad": "1", "contacto": "doite.cl / DM Instagram", "idea": "Maia equipada con Doite en trekking y camping", "monto": "", "seguimiento": "", "notas": "+40 tiendas en Chile." },
-    { "id": "m05", "nombre": "Lippi", "categoria": "Outdoor", "estado": "Por contactar", "prioridad": "2", "contacto": "DM Instagram", "idea": "Look de Maia en rutas de cerro", "monto": "", "seguimiento": "", "notas": "" },
-    { "id": "m06", "nombre": "Hydra Outfitters", "categoria": "Surf", "estado": "Por contactar", "prioridad": "2", "contacto": "DM Instagram", "idea": "Traje de Maia en reels de agua fría", "monto": "", "seguimiento": "", "notas": "Trajes de neopreno hechos a mano, Puerto Varas." },
-    { "id": "m07", "nombre": "Wild Protein", "categoria": "Snacks", "estado": "Por contactar", "prioridad": "1", "contacto": "DM Instagram", "idea": "Qué llevo en la mochila antes de surfear", "monto": "", "seguimiento": "", "notas": "" },
-    { "id": "m08", "nombre": "Nutrisco", "categoria": "Snacks", "estado": "Por contactar", "prioridad": "3", "contacto": "Formulario web", "idea": "Colaciones para la ruta", "monto": "", "seguimiento": "", "notas": "Por validar si tienen línea retail." },
-    { "id": "m09", "nombre": "Kombuchacha", "categoria": "Bebidas", "estado": "Por contactar", "prioridad": "2", "contacto": "DM Instagram", "idea": "Post-surf: Maia saliendo del agua con una lata", "monto": "", "seguimiento": "", "notas": "" },
-    { "id": "m10", "nombre": "Dr. Kombú", "categoria": "Bebidas", "estado": "Por contactar", "prioridad": "2", "contacto": "DM Instagram", "idea": "Vida sana en Santiago", "monto": "", "seguimiento": "", "notas": "" },
-    { "id": "m11", "nombre": "Carnada (Concón)", "categoria": "Restaurante", "estado": "Negociando", "prioridad": "1", "contacto": "Amigo de Edo", "idea": "Reel invitando a conocerlo (ya hecho)", "monto": "Canje", "seguimiento": "", "notas": "Video listo, esperando aprobación." },
-    { "id": "m12", "nombre": "Hotel Maró", "categoria": "Hotel", "estado": "Negociando", "prioridad": "1", "contacto": "", "idea": "Reel promocional de 10 s (ya hecho)", "monto": "", "seguimiento": "", "notas": "Video listo, esperando aprobación." }
+    {
+      "id": "m01",
+      "nombre": "Hotel Alaia",
+      "categoria": "Hotel",
+      "estado": "Por contactar",
+      "prioridad": "1",
+      "contacto": "DM Instagram / formulario web",
+      "idea": "Un finde en Alaia: reel + stories, canje por estadía",
+      "monto": "",
+      "seguimiento": "",
+      "notas": "12 habitaciones frente a Punta de Lobos."
+    },
+    {
+      "id": "m02",
+      "nombre": "Surf Lodge Posada Punta de Lobos",
+      "categoria": "Hotel",
+      "estado": "Por contactar",
+      "prioridad": "1",
+      "contacto": "DM Instagram",
+      "idea": "Dónde dormir si vas a surfear Lobos",
+      "monto": "",
+      "seguimiento": "",
+      "notas": ""
+    },
+    {
+      "id": "m03",
+      "nombre": "Altiplánico Cajón del Maipo",
+      "categoria": "Hotel",
+      "estado": "Por contactar",
+      "prioridad": "1",
+      "contacto": "DM Instagram / formulario web",
+      "idea": "Continuación del reel del Cajón: dónde quedarse",
+      "monto": "",
+      "seguimiento": "",
+      "notas": "9 habitaciones junto al río, San Alfonso."
+    },
+    {
+      "id": "m04",
+      "nombre": "Doite",
+      "categoria": "Outdoor",
+      "estado": "Por contactar",
+      "prioridad": "1",
+      "contacto": "doite.cl / DM Instagram",
+      "idea": "Maia equipada con Doite en trekking y camping",
+      "monto": "",
+      "seguimiento": "",
+      "notas": "+40 tiendas en Chile."
+    },
+    {
+      "id": "m05",
+      "nombre": "Lippi",
+      "categoria": "Outdoor",
+      "estado": "Por contactar",
+      "prioridad": "2",
+      "contacto": "DM Instagram",
+      "idea": "Look de Maia en rutas de cerro",
+      "monto": "",
+      "seguimiento": "",
+      "notas": ""
+    },
+    {
+      "id": "m06",
+      "nombre": "Hydra Outfitters",
+      "categoria": "Surf",
+      "estado": "Por contactar",
+      "prioridad": "2",
+      "contacto": "DM Instagram",
+      "idea": "Traje de Maia en reels de agua fría",
+      "monto": "",
+      "seguimiento": "",
+      "notas": "Trajes de neopreno hechos a mano, Puerto Varas."
+    },
+    {
+      "id": "m07",
+      "nombre": "Wild Protein",
+      "categoria": "Snacks",
+      "estado": "Por contactar",
+      "prioridad": "1",
+      "contacto": "DM Instagram",
+      "idea": "Qué llevo en la mochila antes de surfear",
+      "monto": "",
+      "seguimiento": "",
+      "notas": ""
+    },
+    {
+      "id": "m08",
+      "nombre": "Nutrisco",
+      "categoria": "Snacks",
+      "estado": "Por contactar",
+      "prioridad": "3",
+      "contacto": "Formulario web",
+      "idea": "Colaciones para la ruta",
+      "monto": "",
+      "seguimiento": "",
+      "notas": "Por validar si tienen línea retail."
+    },
+    {
+      "id": "m09",
+      "nombre": "Kombuchacha",
+      "categoria": "Bebidas",
+      "estado": "Por contactar",
+      "prioridad": "2",
+      "contacto": "DM Instagram",
+      "idea": "Post-surf: Maia saliendo del agua con una lata",
+      "monto": "",
+      "seguimiento": "",
+      "notas": ""
+    },
+    {
+      "id": "m10",
+      "nombre": "Dr. Kombú",
+      "categoria": "Bebidas",
+      "estado": "Por contactar",
+      "prioridad": "2",
+      "contacto": "DM Instagram",
+      "idea": "Vida sana en Santiago",
+      "monto": "",
+      "seguimiento": "",
+      "notas": ""
+    },
+    {
+      "id": "m11",
+      "nombre": "Carnada (Concón)",
+      "categoria": "Restaurante",
+      "estado": "Negociando",
+      "prioridad": "1",
+      "contacto": "Amigo de Edo",
+      "idea": "Reel invitando a conocerlo (ya hecho)",
+      "monto": "Canje",
+      "seguimiento": "",
+      "notas": "Video listo, esperando aprobación."
+    },
+    {
+      "id": "m12",
+      "nombre": "Hotel Maró",
+      "categoria": "Hotel",
+      "estado": "Negociando",
+      "prioridad": "1",
+      "contacto": "",
+      "idea": "Reel promocional de 10 s (ya hecho)",
+      "monto": "",
+      "seguimiento": "",
+      "notas": "Video listo, esperando aprobación."
+    }
   ],
   "movimientos": [],
   "tareas": [
-    { "id": "t01", "titulo": "Promocionar reel Punta de Lobos en Meta Ads (CLP 60.000 / 7 días)", "etapa": "Presencia", "fecha": "2026-10-29", "hecha": false },
-    { "id": "t02", "titulo": "Poner límite de gasto CLP 240.000 en la cuenta publicitaria", "etapa": "Presencia", "fecha": "2026-10-29", "hecha": false },
-    { "id": "t03", "titulo": "Recargar créditos Higgsfield (~300 para 4 reels)", "etapa": "Presencia", "fecha": "", "hecha": false },
-    { "id": "t04", "titulo": "Crear voz 'Maia Cruz – Chilena' en Higgsfield (audio ya subido)", "etapa": "Presencia", "fecha": "", "hecha": false },
-    { "id": "t05", "titulo": "DM a las 5 marcas de prioridad 1 pidiendo correo de marketing", "etapa": "Prueba social", "fecha": "2026-11-01", "hecha": false },
-    { "id": "t06", "titulo": "Revisar link maiacruz.cl en bio y botón de contacto en FB", "etapa": "Presencia", "fecha": "", "hecha": false },
-    { "id": "t07", "titulo": "Agregar etiqueta IA oficial en la app de Instagram a cada post", "etapa": "Presencia", "fecha": "", "hecha": false },
-    { "id": "t08", "titulo": "Pedir aprobación de videos a Carnada y Hotel Maró", "etapa": "Prueba social", "fecha": "", "hecha": false },
-    { "id": "t09", "titulo": "Portafolio de Meta y cuentas conectadas", "etapa": "Presencia", "fecha": "", "hecha": true },
-    { "id": "t10", "titulo": "Migrar este panel a DigitalOcean con datos persistentes", "etapa": "Presencia", "fecha": "", "hecha": false }
+    {
+      "id": "t01",
+      "titulo": "Promocionar reel Punta de Lobos en Meta Ads (CLP 60.000 / 7 días)",
+      "etapa": "Presencia",
+      "fecha": "2026-10-29",
+      "hecha": false
+    },
+    {
+      "id": "t02",
+      "titulo": "Poner límite de gasto CLP 240.000 en la cuenta publicitaria",
+      "etapa": "Presencia",
+      "fecha": "2026-10-29",
+      "hecha": false
+    },
+    {
+      "id": "t03",
+      "titulo": "Recargar créditos Higgsfield (~300 para 4 reels)",
+      "etapa": "Presencia",
+      "fecha": "",
+      "hecha": false
+    },
+    {
+      "id": "t04",
+      "titulo": "Crear voz 'Maia Cruz – Chilena' en Higgsfield (audio ya subido)",
+      "etapa": "Presencia",
+      "fecha": "",
+      "hecha": false
+    },
+    {
+      "id": "t05",
+      "titulo": "DM a las 5 marcas de prioridad 1 pidiendo correo de marketing",
+      "etapa": "Prueba social",
+      "fecha": "2026-11-01",
+      "hecha": false
+    },
+    {
+      "id": "t06",
+      "titulo": "Revisar link maiacruz.cl en bio y botón de contacto en FB",
+      "etapa": "Presencia",
+      "fecha": "",
+      "hecha": false
+    },
+    {
+      "id": "t07",
+      "titulo": "Agregar etiqueta IA oficial en la app de Instagram a cada post",
+      "etapa": "Presencia",
+      "fecha": "",
+      "hecha": false
+    },
+    {
+      "id": "t08",
+      "titulo": "Pedir aprobación de videos a Carnada y Hotel Maró",
+      "etapa": "Prueba social",
+      "fecha": "",
+      "hecha": false
+    },
+    {
+      "id": "t09",
+      "titulo": "Portafolio de Meta y cuentas conectadas",
+      "etapa": "Presencia",
+      "fecha": "",
+      "hecha": true
+    },
+    {
+      "id": "t10",
+      "titulo": "Migrar este panel a DigitalOcean con datos persistentes",
+      "etapa": "Presencia",
+      "fecha": "",
+      "hecha": false
+    }
   ],
   "metricas": [],
   "recursos": [
-    { "id": "r01", "nombre": "Instagram", "valor": "https://www.instagram.com/maiacruz.ia/" },
-    { "id": "r02", "nombre": "Landing", "valor": "https://maiacruz.cl" },
-    { "id": "r03", "nombre": "Correo marcas", "valor": "hola@maiacruz.cl" },
-    { "id": "r04", "nombre": "Página de Facebook", "valor": "https://www.facebook.com/profile.php?id=61596170093731" },
-    { "id": "r05", "nombre": "Reels composer (Meta)", "valor": "https://business.facebook.com/latest/reels_composer/?asset_id=1393448887191181&business_id=1809981706867703" },
-    { "id": "r06", "nombre": "Feed composer (Meta)", "valor": "https://business.facebook.com/latest/composer/?asset_id=17841436248985036&business_id=1809981706867703" },
-    { "id": "r07", "nombre": "Voz Higgsfield 'Maia Cruz'", "valor": "067ca030-93dd-4bd9-ac81-0d99f6bb685a" },
-    { "id": "r08", "nombre": "Audio para voz 'Maia Cruz – Chilena'", "valor": "5d4b878c-024d-45bf-a6ba-dab36cad73e8" },
-    { "id": "r09", "nombre": "Character sheet Higgsfield", "valor": "16240bfa-57b0-4eb3-a905-0ff41e432cbf" },
-    { "id": "r10", "nombre": "Reglas de marca", "valor": "Aviso de IA en cada texto · máx. 5 hashtags · evitar 'po' · sílabas en nombres difíciles (Pi-chi-le-mu)" }
+    {
+      "id": "r01",
+      "nombre": "Instagram",
+      "valor": "https://www.instagram.com/maiacruz.ia/"
+    },
+    {
+      "id": "r02",
+      "nombre": "Landing",
+      "valor": "https://maiacruz.cl"
+    },
+    {
+      "id": "r03",
+      "nombre": "Correo marcas",
+      "valor": "hola@maiacruz.cl"
+    },
+    {
+      "id": "r04",
+      "nombre": "Página de Facebook",
+      "valor": "https://www.facebook.com/profile.php?id=61596170093731"
+    },
+    {
+      "id": "r05",
+      "nombre": "Reels composer (Meta)",
+      "valor": "https://business.facebook.com/latest/reels_composer/?asset_id=1393448887191181&business_id=1809981706867703"
+    },
+    {
+      "id": "r06",
+      "nombre": "Feed composer (Meta)",
+      "valor": "https://business.facebook.com/latest/composer/?asset_id=17841436248985036&business_id=1809981706867703"
+    },
+    {
+      "id": "r07",
+      "nombre": "Voz Higgsfield 'Maia Cruz'",
+      "valor": "067ca030-93dd-4bd9-ac81-0d99f6bb685a"
+    },
+    {
+      "id": "r08",
+      "nombre": "Audio para voz 'Maia Cruz – Chilena'",
+      "valor": "5d4b878c-024d-45bf-a6ba-dab36cad73e8"
+    },
+    {
+      "id": "r09",
+      "nombre": "Character sheet Higgsfield",
+      "valor": "16240bfa-57b0-4eb3-a905-0ff41e432cbf"
+    },
+    {
+      "id": "r10",
+      "nombre": "Reglas de marca",
+      "valor": "Aviso de IA en cada texto · máx. 5 hashtags · evitar 'po' · sílabas en nombres difíciles (Pi-chi-le-mu)"
+    }
+  ],
+  "ideas": [
+    {
+      "id": "i01",
+      "titulo": "Amanecer en Punta de Lobos antes de que llegue la gente",
+      "categoria": "Surf",
+      "formato": "Reel",
+      "notas": "Gancho: \"Lo mejor de Lobos pasa a las 7 de la mañana\"",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i02",
+      "titulo": "3 errores de principiante en el surf",
+      "categoria": "Surf",
+      "formato": "Carrusel",
+      "notas": "Educativo, muy guardable",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i03",
+      "titulo": "Qué llevo en la mochila para un día de surf",
+      "categoria": "Surf",
+      "formato": "Reel",
+      "notas": "Ideal para pitch a snacks y bebidas",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i04",
+      "titulo": "Trekking al Cerro La Campana",
+      "categoria": "Outdoor",
+      "formato": "Reel",
+      "notas": "Vista al mar y la cordillera desde la cumbre",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i05",
+      "titulo": "Picnic en el Embalse El Yeso",
+      "categoria": "Outdoor",
+      "formato": "Carrusel",
+      "notas": "Colores turquesa, muy visual",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i06",
+      "titulo": "Ruta de 1 día por el Cajón del Maipo",
+      "categoria": "Viajes",
+      "formato": "Carrusel",
+      "notas": "Itinerario: termas, río y empanadas",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i07",
+      "titulo": "Bowl de açaí post-surf hecho en casa",
+      "categoria": "Comida sana",
+      "formato": "Reel",
+      "notas": "Receta en 10 s",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i08",
+      "titulo": "Feria de Pichilemu: qué comprar",
+      "categoria": "Comida sana",
+      "formato": "Carrusel",
+      "notas": "Productores locales",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i09",
+      "titulo": "Fin de semana en Matanzas",
+      "categoria": "Viajes",
+      "formato": "Reel",
+      "notas": "Windsurf y cabañas",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i10",
+      "titulo": "Atardecer en Cahuil y las salinas",
+      "categoria": "Viajes",
+      "formato": "Reel",
+      "notas": "Luz dorada, plano lento",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i11",
+      "titulo": "Así se crea Maia (detrás de cámara)",
+      "categoria": "Detrás de cámara",
+      "formato": "Reel",
+      "notas": "Transparencia sobre la IA, genera curiosidad",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i12",
+      "titulo": "Maia responde: ¿qué tabla me compro para partir?",
+      "categoria": "Surf",
+      "formato": "Reel",
+      "notas": "Pregunta de seguidores",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i13",
+      "titulo": "Snacks para el cerro que no se aplastan",
+      "categoria": "Comida sana",
+      "formato": "Carrusel",
+      "notas": "Pitch a Wild Protein",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i14",
+      "titulo": "Tabla de mareas: cómo leerla en 10 segundos",
+      "categoria": "Surf",
+      "formato": "Reel",
+      "notas": "Educativo",
+      "estado": "Nueva"
+    },
+    {
+      "id": "i15",
+      "titulo": "Escapada a Isla Negra y El Quisco",
+      "categoria": "Viajes",
+      "formato": "Carrusel",
+      "notas": "Ruta costera desde Santiago",
+      "estado": "Nueva"
+    }
   ]
 }
