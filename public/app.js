@@ -199,23 +199,97 @@ const POST_FIELDS = [
   { name: 'link', label: 'Link publicado', full: true },
   { name: 'notas', label: 'Notas', type: 'textarea', full: true },
 ];
-function editPost(p = {}) {
-  openModal({
-    title: p.id ? 'Editar publicación' : 'Nueva publicación',
-    fields: POST_FIELDS, values: p,
-    onSave: (d) => saveItem('posts', p.id, d),
-    onDelete: p.id ? () => deleteItem('posts', p.id) : null,
-    extra: [{
-      label: '✨ Generar con IA', busy: 'Escribiendo…', cls: 'ai',
-      onClick: async ({ get, set }) => {
-        const titulo = get('titulo');
-        if (!titulo) throw new Error('Escribe primero el título o tema.');
-        const r = await api('/api/ai/guion', { method: 'POST', body: { titulo, formato: get('formato'), notas: get('notas') } });
-        set('guion', r.guion); set('escena', r.escena); set('texto', r.texto);
-        toast('Listo: revisa y guarda');
-      },
-    }],
+function postFields() {
+  const marcas = ['', ...DB.marcas.map((m) => m.nombre)];
+  return [
+    ...POST_FIELDS.slice(0, 7),
+    { name: 'marca', label: 'Marca (para el reporte)', type: 'select', options: marcas },
+    ...POST_FIELDS.slice(7),
+    { name: 'archivos', label: 'Archivos para publicar (se llenan al subir)', full: true },
+    { name: 'pub_ig', label: 'Publicar en Instagram', type: 'checkbox', default: true },
+    { name: 'pub_fb', label: 'Publicar también en Facebook', type: 'checkbox', default: false },
+    { name: 'auto_publicar', label: 'Publicar sola en la fecha y hora indicadas (desde el panel)', type: 'checkbox', full: true },
+  ];
+}
+async function subirArchivo(file) {
+  const res = await fetch('/api/upload?name=' + encodeURIComponent(file.name), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/octet-stream', 'X-Requested-With': 'maia' },
+    body: file,
   });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(d.error || 'Error al subir');
+  return d;
+}
+function agregarArchivo({ get, set }, r) {
+  const actual = get('archivos').split(',').map((x) => x.trim()).filter(Boolean);
+  actual.push(`${r.nombre}:${r.tipo}`);
+  set('archivos', actual.join(', '));
+}
+function editPost(p = {}) {
+  const estadoPub = p.pub_estado ? ` · ${p.pub_estado}` : '';
+  openModal({
+    title: (p.id ? 'Editar publicación' : 'Nueva publicación') + estadoPub,
+    fields: postFields(), values: p,
+    onSave: (d) => saveItem('posts', p.id, { ...d, ...(d.auto_publicar && p.pub_estado === 'Error' ? { pub_estado: '', pub_error: '' } : {}) }),
+    onDelete: p.id ? () => deleteItem('posts', p.id) : null,
+    extra: [
+      {
+        label: '✨ Generar con IA', busy: 'Escribiendo…', cls: 'ai',
+        onClick: async ({ get, set }) => {
+          const titulo = get('titulo');
+          if (!titulo) throw new Error('Escribe primero el título o tema.');
+          const r = await api('/api/ai/guion', { method: 'POST', body: { titulo, formato: get('formato'), notas: get('notas'), marca: get('marca') } });
+          set('guion', r.guion); set('escena', r.escena); set('texto', r.texto);
+          toast('Listo: revisa y guarda');
+        },
+      },
+      {
+        label: '📎 Subir archivo', busy: 'Subiendo…',
+        onClick: (h) => new Promise((resolve, reject) => {
+          const inp = document.createElement('input');
+          inp.type = 'file'; inp.multiple = true; inp.accept = 'video/mp4,video/quicktime,image/jpeg,image/png,image/webp';
+          inp.onchange = async () => {
+            try { for (const f of inp.files) agregarArchivo(h, await subirArchivo(f)); toast('Archivo listo'); resolve(); } catch (e) { reject(e); }
+          };
+          inp.oncancel = () => resolve();
+          inp.click();
+        }),
+      },
+      {
+        label: '🔗 Desde link', busy: 'Descargando…',
+        onClick: async (h) => {
+          const url = prompt('Pega el link del video o la foto (por ejemplo, el de Higgsfield):');
+          if (!url) return;
+          agregarArchivo(h, await api('/api/upload-url', { method: 'POST', body: { url: url.trim() } }));
+          toast('Archivo listo');
+        },
+      },
+      ...(p.id ? [{
+        label: '🚀 Publicar ahora', busy: 'Enviando…', cls: 'primary',
+        onClick: async ({ get }) => {
+          const archivos = get('archivos');
+          if (!archivos) throw new Error('Primero sube un video o foto.');
+          if (!confirm(`¿Publicar "${get('titulo')}" ahora en ${[$('#modal-fields [name="pub_ig"]').checked ? 'Instagram' : '', $('#modal-fields [name="pub_fb"]').checked ? 'Facebook' : ''].filter(Boolean).join(' y ') || 'Instagram'}?`)) return;
+          await api(`/api/posts/${p.id}`, { method: 'PUT', body: { archivos, texto: get('texto'), pub_ig: $('#modal-fields [name="pub_ig"]').checked, pub_fb: $('#modal-fields [name="pub_fb"]').checked, pub_estado: '', pub_error: '' } });
+          const r = await api(`/api/posts/${p.id}/publicar`, { method: 'POST' });
+          $('#modal').close();
+          toast(r.message);
+          const t0 = Date.now();
+          const poll = setInterval(async () => {
+            await reload();
+            const q = DB.posts.find((x) => x.id === p.id);
+            if (!q || q.pub_estado !== 'Publicando' || Date.now() - t0 > 6 * 60000) {
+              clearInterval(poll);
+              if (q?.pub_estado === 'Publicado') toast('¡Publicado!');
+              if (q?.pub_estado === 'Error') alert('No se pudo publicar: ' + q.pub_error);
+            }
+          }, 8000);
+        },
+      }] : []),
+    ],
+  });
+  if (p.pub_error) toast('Último error: ' + p.pub_error);
 }
 
 function copiar(text) {
@@ -268,6 +342,8 @@ const MARCA_FIELDS = [
   { name: 'monto', label: 'Monto o canje' },
   { name: 'seguimiento', label: 'Próximo seguimiento', type: 'date' },
   { name: 'notas', label: 'Notas', type: 'textarea', full: true },
+  { name: 'siguiente_paso', label: 'Próximo paso (aparece en el reporte)', full: true },
+  { name: 'reporte_enviado', label: 'Reporte de resultados enviado', type: 'checkbox', full: true },
 ];
 function editMarca(m = {}) {
   openModal({
@@ -278,6 +354,7 @@ function editMarca(m = {}) {
     extra: m.id ? [
       { label: '✉️ Correo de pitch', busy: 'Redactando…', cls: 'ai', onClick: () => abrirPitch(m) },
       { label: '📄 Propuesta PDF', onClick: () => abrirPropuesta(m) },
+      { label: '📊 Reporte', onClick: () => window.open(`/reporte/${encodeURIComponent(m.id)}`, '_blank') },
     ] : [],
   });
 }
@@ -398,6 +475,10 @@ function alertas() {
   if (pronto.length) out.push({ t: `${pronto.length} publicación(es) de los próximos 7 días aún no están programadas: ${pronto.map((p) => esc(p.titulo)).join(', ')}.` });
   const seg = DB.marcas.filter((m) => m.seguimiento && m.seguimiento <= hoy && !['Cerrado', 'Descartado'].includes(m.estado));
   if (seg.length) out.push({ t: `Toca hacer seguimiento a: ${seg.map((m) => esc(m.nombre)).join(', ')}.` });
+  const errPub = DB.posts.filter((p) => p.pub_estado === 'Error');
+  if (errPub.length) out.push({ bad: true, t: `No se pudo publicar: ${errPub.map((p) => esc(p.titulo)).join(', ')}. Abre la publicación para ver el detalle.` });
+  const listos = DB.marcas.filter((m) => DB.posts.some((p) => p.marca === m.nombre && p.estado === 'Publicado' && (p.publicado_en || p.fecha) && (p.publicado_en || p.fecha).slice(0, 10) <= addDays(hoy, -7)) && !m.reporte_enviado);
+  if (listos.length) out.push({ t: `Reporte listo para enviar a: ${listos.map((m) => esc(m.nombre)).join(', ')} (Marcas → abrir la marca → 📊 Reporte).` });
   const venc = DB.tareas.filter((t) => !t.hecha && t.fecha && t.fecha < hoy);
   if (venc.length) out.push({ bad: true, t: `${venc.length} tarea(s) vencida(s).` });
   const libres = [];
@@ -424,6 +505,7 @@ function postRow(p) {
   return `<div class="row" data-post="${p.id}">
     <div class="date">${d ? `<b>${d.getDate()}</b><small>${MESES[d.getMonth()]}</small>` : '<small>sin fecha</small>'}</div>
     <div class="main"><b>${esc(p.titulo)}</b><small>${esc(p.formato || '')} · ${esc(p.plataformas || '')}${p.hora ? ' · ' + esc(p.hora) : ''}</small></div>
+    ${p.pub_estado === 'Error' ? '<span class="pill Aprobación" title="' + esc(p.pub_error || '') + '">Error al publicar</span>' : p.pub_estado === 'Publicando' ? '<span class="pill Producido">Publicando…</span>' : p.auto_publicar && p.estado !== 'Publicado' ? '<span class="pill Programado" title="Se publica sola desde el panel">Auto</span>' : ''}
     <span class="pill ${esc(p.estado)}">${esc(p.estado)}</span>
   </div>`;
 }

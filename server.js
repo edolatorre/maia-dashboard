@@ -9,6 +9,8 @@ const createSecrets = require('./lib/secrets');
 const meta = require('./lib/meta');
 const ai = require('./lib/ai');
 const views = require('./lib/views');
+const createMedia = require('./lib/media');
+const publish = require('./lib/publish');
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_USER = (process.env.ADMIN_USER || 'edo').trim();
@@ -51,6 +53,7 @@ function saveDb() {
 }
 loadDb();
 const secrets = createSecrets(DATA_DIR);
+const media = createMedia(DATA_DIR);
 
 // ---------- auth ----------
 function sign(value) {
@@ -271,6 +274,99 @@ app.post('/api/admin/update', requireAuth, async (req, res) => {
   }
 });
 
+
+// ---------- archivos y publicación ----------
+const PUBLIC_URL = () => (process.env.PUBLIC_URL || db.config.public_url || 'https://panel.maiacruz.cl').replace(/\/$/, '');
+
+app.get('/m/:nombre', (req, res) => {
+  const p = media.filePath(req.params.nombre);
+  if (!p) return res.status(404).end();
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(p);
+});
+
+app.put('/api/upload', requireAuth, async (req, res) => {
+  try {
+    res.json(await media.fromRequest(req, req.query.name));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+app.post('/api/upload-url', requireAuth, async (req, res) => {
+  try {
+    res.json(await media.fromUrl(req.body?.url));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+function chileNow() {
+  const f = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  return f.format(new Date()).replace(',', ''); // "YYYY-MM-DD HH:mm"
+}
+function archivos(post) {
+  return String(post.archivos || '').split(',').map((x) => x.trim()).filter(Boolean).map((x) => {
+    const [nombre, tipo] = x.split(':');
+    return { nombre, tipo: tipo || (/\.(mp4|mov)$/i.test(nombre) ? 'video' : 'imagen'), url: `${PUBLIC_URL()}/m/${nombre}` };
+  });
+}
+const publishing = new Set();
+async function publishPost(post) {
+  if (publishing.has(post.id)) return;
+  const token = secrets.get('meta_token');
+  if (!token) throw new Error('Falta el token de Meta.');
+  const items = archivos(post);
+  if (!items.length) throw new Error('La publicación no tiene archivos adjuntos.');
+  for (const it of items) if (!media.filePath(it.nombre)) throw new Error('No encuentro el archivo ' + it.nombre + '. Vuelve a subirlo.');
+  const caption = String(post.texto || '').slice(0, 2200);
+  const cfg = db.config.meta || {};
+  const igId = db.meta?.ig_user_id || cfg.ig_user_id || '17841436248985036';
+  const pageId = db.meta?.page_id || cfg.page_id || '1393448887191181';
+  publishing.add(post.id);
+  const set = (patch) => { Object.assign(post, patch, { actualizado: new Date().toISOString() }); saveDb(); };
+  set({ pub_estado: 'Publicando', pub_error: '' });
+  const errores = [];
+  try {
+    if (post.pub_ig !== false && !post.publicado_ig_id) {
+      try {
+        const r = await publish.instagram({ igId, token, items, caption });
+        set({ publicado_ig_id: r.id, link: r.link || post.link });
+      } catch (e) { errores.push('Instagram: ' + e.message); }
+    }
+    if (post.pub_fb && !post.publicado_fb_id) {
+      try {
+        const r = await publish.facebook({ pageId, token, items, caption });
+        set({ publicado_fb_id: r.id, link_fb: r.link });
+      } catch (e) { errores.push('Facebook: ' + e.message); }
+    }
+  } finally {
+    publishing.delete(post.id);
+  }
+  if (errores.length) set({ pub_estado: 'Error', pub_error: errores.join(' · ') });
+  else set({ pub_estado: 'Publicado', estado: 'Publicado', publicado_en: new Date().toISOString() });
+  console.log(`[publicar] ${post.titulo}: ${errores.length ? errores.join(' | ') : 'ok'}`);
+}
+
+app.post('/api/posts/:id/publicar', requireAuth, (req, res) => {
+  const post = db.posts.find((p) => p.id === req.params.id);
+  if (!post) return res.status(404).json({ error: 'No encontrado' });
+  if (!secrets.has('meta_token')) return res.status(400).json({ error: 'Primero conecta Meta en Ajustes.' });
+  if (!archivos(post).length) return res.status(400).json({ error: 'Adjunta al menos un video o foto.' });
+  publishPost(post).catch((e) => { post.pub_estado = 'Error'; post.pub_error = e.message; saveDb(); });
+  res.status(202).json({ ok: true, message: 'Publicando… esto puede tardar 1–3 minutos.' });
+});
+
+// Programador: revisa cada minuto las publicaciones marcadas para publicar solas
+setInterval(() => {
+  if (!secrets.has('meta_token')) return;
+  const ahora = chileNow();
+  for (const p of db.posts) {
+    if (!p.auto_publicar || p.pub_estado === 'Publicado' || p.pub_estado === 'Publicando' || p.pub_estado === 'Error') continue;
+    if (!p.fecha || !p.hora) continue;
+    if (`${p.fecha} ${p.hora}` <= ahora) publishPost(p).catch((e) => { p.pub_estado = 'Error'; p.pub_error = e.message; saveDb(); });
+  }
+}, 60000);
+
 // ---------- datos ----------
 app.get('/api/data', requireAuth, (req, res) => res.json(db));
 
@@ -345,6 +441,11 @@ app.get('/mediakit', (req, res) => {
   const logged = Boolean(session(req));
   if (!db.config.mediakit?.publico && !logged) return res.status(404).send(views.notFound());
   res.send(views.mediakit(db, { preview: !db.config.mediakit?.publico }));
+});
+app.get('/reporte/:id', requireAuthPage, (req, res) => {
+  const marca = db.marcas.find((m) => m.id === req.params.id);
+  if (!marca) return res.status(404).send(views.notFound());
+  res.send(views.reporte(db, marca));
 });
 app.get('/propuesta/:id', requireAuthPage, (req, res) => {
   const marca = db.marcas.find((m) => m.id === req.params.id);
