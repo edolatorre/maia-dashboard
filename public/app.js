@@ -209,6 +209,8 @@ function postFields() {
     { name: 'pub_ig', label: 'Publicar en Instagram', type: 'checkbox', default: true },
     { name: 'pub_fb', label: 'Publicar también en Facebook', type: 'checkbox', default: false },
     { name: 'auto_publicar', label: 'Publicar sola en la fecha y hora indicadas (desde el panel)', type: 'checkbox', full: true },
+    { name: 'requiere_aprobacion', label: 'Requiere aprobación de la marca antes de publicar', type: 'checkbox', full: true, default: true },
+    { name: 'aprobacion_historial', label: 'Respuestas de la marca', type: 'textarea', full: true },
   ];
 }
 async function subirArchivo(file) {
@@ -227,7 +229,8 @@ function agregarArchivo({ get, set }, r) {
   set('archivos', actual.join(', '));
 }
 function editPost(p = {}) {
-  const estadoPub = p.pub_estado ? ` · ${p.pub_estado}` : '';
+  const estadoPub = (p.pub_estado ? ` · ${p.pub_estado}` : '') + (p.marca && p.aprobacion_vista && p.aprobacion_vista !== 'No requiere' ? ` · Marca: ${p.aprobacion_vista}` : '');
+  if (p.aprobacion_nueva) api(`/api/posts/${p.id}/aprobacion-vista`, { method: 'POST' }).catch(() => {});
   openModal({
     title: (p.id ? 'Editar publicación' : 'Nueva publicación') + estadoPub,
     fields: postFields(), values: p,
@@ -266,6 +269,29 @@ function editPost(p = {}) {
         },
       },
       ...(p.id ? [{
+        label: '🔗 Pedir aprobación', busy: 'Generando…',
+        onClick: async ({ get }) => {
+          if (!get('marca')) throw new Error('Primero elige la marca y guarda la publicación.');
+          if (!get('archivos')) throw new Error('Primero sube el video o las fotos.');
+          await api(`/api/posts/${p.id}`, { method: 'PUT', body: { marca: get('marca'), archivos: get('archivos'), texto: get('texto'), fecha: get('fecha'), hora: get('hora') } });
+          const r = await api(`/api/posts/${p.id}/aprobacion`, { method: 'POST' });
+          const msg = `Hola, les comparto la propuesta de contenido de Maia Cruz para ${get('marca')}. Pueden verla y aprobarla o pedir cambios aquí: ${r.url}`;
+          await reload();
+          openModal({
+            title: 'Link de aprobación listo',
+            fields: [{ name: 'link', label: 'Link privado (vence en 30 días)', full: true }, { name: 'mensaje', label: 'Mensaje sugerido', type: 'textarea', full: true }],
+            values: { link: r.url, mensaje: msg },
+            onSave: async () => {},
+            extra: [
+              { label: 'Copiar link', onClick: ({ get: g }) => copiar(g('link')) },
+              { label: 'Copiar mensaje', onClick: ({ get: g }) => copiar(g('mensaje')) },
+              { label: 'WhatsApp', onClick: ({ get: g }) => window.open('https://wa.me/?text=' + encodeURIComponent(g('mensaje')), '_blank') },
+              { label: 'Correo', onClick: ({ get: g }) => { window.location.href = `mailto:?subject=${encodeURIComponent('Aprobación de contenido · Maia Cruz')}&body=${encodeURIComponent(g('mensaje'))}`; } },
+              { label: 'Ver como marca', onClick: ({ get: g }) => window.open(g('link'), '_blank') },
+            ],
+          });
+        },
+      }, {
         label: '🚀 Publicar ahora', busy: 'Enviando…', cls: 'primary',
         onClick: async ({ get }) => {
           const archivos = get('archivos');
@@ -475,6 +501,10 @@ function alertas() {
   if (pronto.length) out.push({ t: `${pronto.length} publicación(es) de los próximos 7 días aún no están programadas: ${pronto.map((p) => esc(p.titulo)).join(', ')}.` });
   const seg = DB.marcas.filter((m) => m.seguimiento && m.seguimiento <= hoy && !['Cerrado', 'Descartado'].includes(m.estado));
   if (seg.length) out.push({ t: `Toca hacer seguimiento a: ${seg.map((m) => esc(m.nombre)).join(', ')}.` });
+  const nuevas = DB.posts.filter((p) => p.aprobacion_nueva);
+  if (nuevas.length) out.push({ t: `Respuesta de marcas: ${nuevas.map((p) => `${esc(p.marca)} → <b>${esc(p.aprobacion_estado)}</b> en "${esc(p.titulo)}"`).join(' · ')}. Abre la publicación para ver el comentario.` });
+  const sinAprob = DB.posts.filter((p) => p.marca && p.fecha && p.estado !== 'Publicado' && p.aprobacion_vista && !['Aprobado', 'No requiere'].includes(p.aprobacion_vista) && p.fecha <= addDays(hoy, 3));
+  if (sinAprob.length) out.push({ bad: true, t: `Sin aprobación de la marca y salen pronto (no se publicarán solas): ${sinAprob.map((p) => `${esc(p.titulo)} (${esc(p.marca)}, ${esc(p.aprobacion_vista)})`).join(', ')}.` });
   const errPub = DB.posts.filter((p) => p.pub_estado === 'Error');
   if (errPub.length) out.push({ bad: true, t: `No se pudo publicar: ${errPub.map((p) => esc(p.titulo)).join(', ')}. Abre la publicación para ver el detalle.` });
   const listos = DB.marcas.filter((m) => DB.posts.some((p) => p.marca === m.nombre && p.estado === 'Publicado' && (p.publicado_en || p.fecha) && (p.publicado_en || p.fecha).slice(0, 10) <= addDays(hoy, -7)) && !m.reporte_enviado);
@@ -506,6 +536,7 @@ function postRow(p) {
     <div class="date">${d ? `<b>${d.getDate()}</b><small>${MESES[d.getMonth()]}</small>` : '<small>sin fecha</small>'}</div>
     <div class="main"><b>${esc(p.titulo)}</b><small>${esc(p.formato || '')} · ${esc(p.plataformas || '')}${p.hora ? ' · ' + esc(p.hora) : ''}</small></div>
     ${p.pub_estado === 'Error' ? '<span class="pill Aprobación" title="' + esc(p.pub_error || '') + '">Error al publicar</span>' : p.pub_estado === 'Publicando' ? '<span class="pill Producido">Publicando…</span>' : p.auto_publicar && p.estado !== 'Publicado' ? '<span class="pill Programado" title="Se publica sola desde el panel">Auto</span>' : ''}
+    ${p.marca && p.aprobacion_vista && p.aprobacion_vista !== 'No requiere' ? `<span class="pill ${p.aprobacion_vista === 'Aprobado' ? 'Programado' : p.aprobacion_vista === 'Cambios pedidos' || p.aprobacion_vista === 'Cambió después de aprobar' ? 'Aprobación' : 'Guion'}" title="Aprobación de ${esc(p.marca)}">${esc(p.aprobacion_vista === 'Aprobado' ? '✓ Marca' : p.aprobacion_vista)}</span>` : ''}
     <span class="pill ${esc(p.estado)}">${esc(p.estado)}</span>
   </div>`;
 }

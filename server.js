@@ -310,9 +310,28 @@ function archivos(post) {
     return { nombre, tipo: tipo || (/\.(mp4|mov)$/i.test(nombre) ? 'video' : 'imagen'), url: `${PUBLIC_URL()}/m/${nombre}` };
   });
 }
+// ---------- aprobación de marcas ----------
+function contentHash(post) {
+  return crypto.createHash('sha256').update(String(post.archivos || '') + '|' + String(post.texto || '')).digest('hex').slice(0, 16);
+}
+function requiereAprobacion(post) {
+  return Boolean((post.marca || '').trim()) && post.requiere_aprobacion !== false;
+}
+function estaAprobado(post) {
+  return post.aprobacion_estado === 'Aprobado' && post.aprobacion_hash === contentHash(post);
+}
+function estadoAprobacion(post) {
+  if (!requiereAprobacion(post)) return 'No requiere';
+  if (post.aprobacion_estado === 'Aprobado' && post.aprobacion_hash !== contentHash(post)) return 'Cambió después de aprobar';
+  return post.aprobacion_estado || 'Sin enviar';
+}
+
 const publishing = new Set();
 async function publishPost(post) {
   if (publishing.has(post.id)) return;
+  if (requiereAprobacion(post) && !estaAprobado(post)) {
+    throw new Error(`Falta la aprobación de ${post.marca} (estado: ${estadoAprobacion(post)}). Envíale el link de aprobación desde la publicación.`);
+  }
   const token = secrets.get('meta_token');
   if (!token) throw new Error('Falta el token de Meta.');
   const items = archivos(post);
@@ -347,13 +366,71 @@ async function publishPost(post) {
   console.log(`[publicar] ${post.titulo}: ${errores.length ? errores.join(' | ') : 'ok'}`);
 }
 
+app.post('/api/posts/:id/aprobacion-vista', requireAuth, (req, res) => {
+  const post = db.posts.find((p) => p.id === req.params.id);
+  if (post) { post.aprobacion_nueva = false; saveDb(); }
+  res.json({ ok: true });
+});
+
 app.post('/api/posts/:id/publicar', requireAuth, (req, res) => {
   const post = db.posts.find((p) => p.id === req.params.id);
   if (!post) return res.status(404).json({ error: 'No encontrado' });
   if (!secrets.has('meta_token')) return res.status(400).json({ error: 'Primero conecta Meta en Ajustes.' });
   if (!archivos(post).length) return res.status(400).json({ error: 'Adjunta al menos un video o foto.' });
+  if (requiereAprobacion(post) && !estaAprobado(post)) return res.status(409).json({ error: `Falta la aprobación de ${post.marca} (${estadoAprobacion(post)}). Envíale el link de aprobación primero.` });
   publishPost(post).catch((e) => { post.pub_estado = 'Error'; post.pub_error = e.message; saveDb(); });
   res.status(202).json({ ok: true, message: 'Publicando… esto puede tardar 1–3 minutos.' });
+});
+
+
+// Generar / renovar el link de aprobación
+app.post('/api/posts/:id/aprobacion', requireAuth, (req, res) => {
+  const post = db.posts.find((p) => p.id === req.params.id);
+  if (!post) return res.status(404).json({ error: 'No encontrado' });
+  if (!archivos(post).length) return res.status(400).json({ error: 'Adjunta el video o las fotos antes de pedir aprobación.' });
+  post.aprobacion_token = crypto.randomBytes(18).toString('base64url');
+  post.aprobacion_vence = new Date(Date.now() + 30 * 864e5).toISOString();
+  post.aprobacion_estado = 'Pendiente';
+  post.aprobacion_hash = '';
+  post.aprobacion_enviada = new Date().toISOString();
+  saveDb();
+  res.json({ url: `${PUBLIC_URL()}/aprobar/${post.aprobacion_token}`, vence: post.aprobacion_vence });
+});
+
+function postPorToken(token) {
+  if (!/^[A-Za-z0-9_-]{20,40}$/.test(token || '')) return null;
+  const p = db.posts.find((x) => x.aprobacion_token && x.aprobacion_token === token);
+  if (!p || (p.aprobacion_vence && p.aprobacion_vence < new Date().toISOString())) return null;
+  return p;
+}
+const respuestas = new Map();
+app.get('/aprobar/:token', (req, res) => {
+  const p = postPorToken(req.params.token);
+  if (!p) return res.status(404).send(views.notFound());
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(views.aprobacion(db, p, archivos(p), { cambiado: p.aprobacion_estado === 'Aprobado' && p.aprobacion_hash !== contentHash(p) }));
+});
+app.post('/aprobar/:token', express.urlencoded({ extended: false, limit: '20kb' }), (req, res) => {
+  const p = postPorToken(req.params.token);
+  if (!p) return res.status(404).send(views.notFound());
+  const k = req.ip + p.id;
+  const list = (respuestas.get(k) || []).filter((t) => Date.now() - t < 3600e3);
+  if (list.length >= 10) return res.status(429).send(views.notFound());
+  list.push(Date.now()); respuestas.set(k, list);
+  const accion = req.body?.accion === 'aprobar' ? 'Aprobado' : 'Cambios pedidos';
+  const nombre = String(req.body?.nombre || '').trim().slice(0, 80) || 'Sin nombre';
+  const comentario = String(req.body?.comentario || '').trim().slice(0, 2000);
+  if (accion === 'Cambios pedidos' && !comentario) return res.redirect(303, `/aprobar/${req.params.token}?falta=1`);
+  p.aprobacion_estado = accion;
+  p.aprobacion_hash = accion === 'Aprobado' ? contentHash(p) : '';
+  p.aprobado_por = nombre;
+  p.aprobado_en = new Date().toISOString();
+  const linea = `${new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' })} · ${nombre}: ${accion}${comentario ? ' — ' + comentario : ''}`;
+  p.aprobacion_historial = [linea, ...String(p.aprobacion_historial || '').split('\n').filter(Boolean)].slice(0, 30).join('\n');
+  p.aprobacion_nueva = true;
+  saveDb();
+  console.log(`[aprobacion] ${p.titulo}: ${accion} por ${nombre}`);
+  res.redirect(303, `/aprobar/${req.params.token}?ok=1`);
 });
 
 // Programador: revisa cada minuto las publicaciones marcadas para publicar solas
@@ -363,12 +440,13 @@ setInterval(() => {
   for (const p of db.posts) {
     if (!p.auto_publicar || p.pub_estado === 'Publicado' || p.pub_estado === 'Publicando' || p.pub_estado === 'Error') continue;
     if (!p.fecha || !p.hora) continue;
+    if (requiereAprobacion(p) && !estaAprobado(p)) continue; // espera aprobación de la marca (alerta en el Resumen)
     if (`${p.fecha} ${p.hora}` <= ahora) publishPost(p).catch((e) => { p.pub_estado = 'Error'; p.pub_error = e.message; saveDb(); });
   }
 }, 60000);
 
 // ---------- datos ----------
-app.get('/api/data', requireAuth, (req, res) => res.json(db));
+app.get('/api/data', requireAuth, (req, res) => res.json({ ...db, posts: db.posts.map((p) => ({ ...p, aprobacion_vista: estadoAprobacion(p) })) }));
 
 app.put('/api/config', requireAuth, (req, res) => {
   const body = req.body || {};
