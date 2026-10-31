@@ -187,3 +187,29 @@ dialog::backdrop { background: rgba(15,42,51,.55); }
 .modal-actions { flex-wrap: wrap; }
 .modal-extra { flex-basis: 100%; order: -1; padding-bottom: 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .modal-extra:empty { display: none; }
+
+/* Revisor de texto */
+.revisor { display: flex; flex-direction: column; gap: 4px; background: var(--sand); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+.revisor .rv { display: flex; gap: 8px; align-items: baseline; }
+.revisor .rv i { font-style: normal; font-weight: 700; width: 18px; height: 18px; flex: none; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; color: #fff; background: var(--muted); }
+.revisor .rv.ok i { background: var(--ok); }
+.revisor .rv.error i { background: var(--bad); }
+.revisor .rv.error { color: var(--bad); font-weight: 600; }
+.revisor .rv.aviso i { background: var(--warn); }
+/* Arrastrar en la grilla */
+.cal .ev[draggable="true"] { cursor: grab; }
+.cal .ev.dragging { opacity: .4; }
+.cal .day.drop { outline: 2px dashed var(--coral); outline-offset: -2px; background: var(--sand); }
+/* Barras horizontales */
+.hbar { display: grid; grid-template-columns: 110px 1fr 60px; gap: 10px; align-items: center; font-size: 13px; margin: 4px 0; }
+.hbar b { text-align: right; }
+.hbar .bar { margin: 0; }
+/* Comentarios */
+.comment { border-top: 1px solid var(--line); padding: 10px 0; display: flex; flex-direction: column; gap: 4px; }
+.comment p { margin: 0; }
+.comment.done { opacity: .65; }
+.comment .reply { padding-left: 12px; color: var(--muted); }
+.reply-form { display: flex; gap: 6px; flex-wrap: wrap; }
+.reply-form input { flex: 1 1 220px; }
+tr.me td { background: var(--sand); }
+@media (max-width: 600px) { .hbar { grid-template-columns: 80px 1fr 50px; } }

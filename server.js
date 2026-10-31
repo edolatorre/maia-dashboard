@@ -11,6 +11,8 @@ const ai = require('./lib/ai');
 const views = require('./lib/views');
 const createMedia = require('./lib/media');
 const publish = require('./lib/publish');
+const radar = require('./lib/radar');
+const revisor = require('./public/revisor');
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_USER = (process.env.ADMIN_USER || 'edo').trim();
@@ -44,6 +46,8 @@ function loadDb() {
     db = seed;
   }
   for (const c of COLLECTIONS) if (!Array.isArray(db[c])) db[c] = [];
+  if (!db.radar || typeof db.radar !== 'object') db.radar = { cuentas: {} };
+  if (!Array.isArray(db.config.referentes)) db.config.referentes = [];
   saveDb();
 }
 function saveDb() {
@@ -332,6 +336,8 @@ async function publishPost(post) {
   if (requiereAprobacion(post) && !estaAprobado(post)) {
     throw new Error(`Falta la aprobación de ${post.marca} (estado: ${estadoAprobacion(post)}). Envíale el link de aprobación desde la publicación.`);
   }
+  const bloq = revisor.bloqueos(post);
+  if (bloq.length) throw new Error('Revisa el texto: ' + bloq.join(' '));
   const token = secrets.get('meta_token');
   if (!token) throw new Error('Falta el token de Meta.');
   const items = archivos(post);
@@ -446,6 +452,77 @@ setInterval(() => {
 }, 60000);
 
 // ---------- datos ----------
+// ---------- radar de cuentas y comentarios ----------
+function igCtx() {
+  const token = secrets.get('meta_token');
+  if (!token) throw Object.assign(new Error('Falta el token de Meta (Ajustes → Integraciones).'), { status: 400 });
+  return { token, igId: db.meta?.ig_user_id || db.config.meta?.ig_user_id || '17841436248985036' };
+}
+const radarLimiter = new Map();
+function radarLimit(req, res) {
+  const now = Date.now();
+  const arr = (radarLimiter.get('x') || []).filter((t) => now - t < 3600e3);
+  if (arr.length >= 150) { res.status(429).json({ error: 'Demasiadas consultas en la última hora. Espera un rato.' }); return false; }
+  arr.push(now); radarLimiter.set('x', arr);
+  return true;
+}
+app.post('/api/radar/cuenta', requireAuth, async (req, res) => {
+  try {
+    if (!radarLimit(req, res)) return;
+    const st = await radar.cuenta({ ...igCtx(), usuario: req.body?.usuario });
+    db.radar.cuentas[st.usuario] = st;
+    const marcaId = req.body?.marca_id;
+    if (marcaId) {
+      const m = db.marcas.find((x) => x.id === marcaId);
+      if (m) { m.instagram = '@' + st.usuario; m.ig_seguidores = st.seguidores; m.ig_engagement = st.engagement; m.ig_actualizado = st.actualizado; }
+    }
+    saveDb();
+    res.json(st);
+  } catch (e) { res.status(e.status || 502).json({ error: e.message }); }
+});
+app.put('/api/radar/referentes', requireAuth, (req, res) => {
+  const list = (Array.isArray(req.body?.referentes) ? req.body.referentes : []).map(radar.limpiarUsuario).filter((u) => /^[a-z0-9._]{1,30}$/.test(u));
+  db.config.referentes = [...new Set(list)].slice(0, 25);
+  saveDb();
+  res.json({ referentes: db.config.referentes });
+});
+app.post('/api/radar/actualizar', requireAuth, async (req, res) => {
+  try {
+    const ctx = igCtx();
+    const propio = db.meta?.instagram?.username;
+    const usuarios = [...new Set([...(propio ? [propio] : []), ...db.config.referentes])];
+    const errores = [];
+    for (const u of usuarios) {
+      try { const st = await radar.cuenta({ ...ctx, usuario: u }); db.radar.cuentas[st.usuario] = st; } catch (e) { errores.push(`@${u}: ${e.message}`); }
+    }
+    db.radar.fecha = new Date().toISOString();
+    saveDb();
+    res.json({ ok: true, errores });
+  } catch (e) { res.status(e.status || 502).json({ error: e.message }); }
+});
+app.get('/api/comentarios', requireAuth, async (req, res) => {
+  try {
+    const list = await radar.comentarios({ ...igCtx(), usuarioPropio: db.meta?.instagram?.username || 'maiacruz.ia' });
+    res.json({ comentarios: list });
+  } catch (e) {
+    const permiso = /permission|\(#10\)|\(#200\)/i.test(e.message);
+    res.status(e.status || 502).json({ error: permiso ? 'El token no tiene permiso para leer comentarios (falta instagram_manage_comments en el usuario del sistema). ' + e.message : e.message });
+  }
+});
+app.post('/api/comentarios/:id/responder', requireAuth, async (req, res) => {
+  try {
+    const { token } = igCtx();
+    const r = await radar.responder({ token, comentarioId: req.params.id, texto: req.body?.texto });
+    res.json({ ok: true, id: r.id });
+  } catch (e) { res.status(e.status || 502).json({ error: e.message }); }
+});
+app.post('/api/ai/respuesta', requireAuth, async (req, res) => {
+  try {
+    const r = await ai.respuesta(aiOpts(), { comentario: String(req.body?.comentario || '').slice(0, 1000), post: String(req.body?.post || '').slice(0, 300) });
+    res.json(r);
+  } catch (e) { res.status(e.status || 502).json({ error: e.message }); }
+});
+
 app.get('/api/data', requireAuth, (req, res) => res.json({ ...db, posts: db.posts.map((p) => ({ ...p, aprobacion_vista: estadoAprobacion(p) })) }));
 
 app.put('/api/config', requireAuth, (req, res) => {

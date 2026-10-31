@@ -315,7 +315,24 @@ function editPost(p = {}) {
       }] : []),
     ],
   });
+  montarRevisor();
   if (p.pub_error) toast('Último error: ' + p.pub_error);
+}
+function montarRevisor() {
+  const ta = $('#modal-fields [name="texto"]');
+  if (!ta || !window.Revisor) return;
+  const box = document.createElement('div');
+  box.className = 'revisor full';
+  box.setAttribute('aria-live', 'polite');
+  ta.closest('label').after(box);
+  const ICON = { ok: '✓', error: '✕', aviso: '!', tip: 'i' };
+  const pintar = () => {
+    const r = Revisor.revisar({ texto: ta.value, marca: modalGet('marca') });
+    box.innerHTML = '<b>Revisión del texto</b>' + r.map((x) => `<span class="rv ${x.nivel}"><i>${ICON[x.nivel]}</i>${esc(x.msg)}</span>`).join('');
+  };
+  ta.addEventListener('input', pintar);
+  $('#modal-fields [name="marca"]')?.addEventListener('change', pintar);
+  pintar();
 }
 
 function copiar(text) {
@@ -364,6 +381,7 @@ const MARCA_FIELDS = [
   { name: 'estado', label: 'Estado', type: 'select', options: ESTADOS_MARCA },
   { name: 'prioridad', label: 'Prioridad', type: 'select', options: ['1', '2', '3'] },
   { name: 'contacto', label: 'Contacto (correo, IG, persona)', full: true },
+  { name: 'instagram', label: 'Instagram de la marca (@usuario)' },
   { name: 'idea', label: 'Idea de colaboración', full: true },
   { name: 'monto', label: 'Monto o canje' },
   { name: 'seguimiento', label: 'Próximo seguimiento', type: 'date' },
@@ -381,8 +399,32 @@ function editMarca(m = {}) {
       { label: '✉️ Correo de pitch', busy: 'Redactando…', cls: 'ai', onClick: () => abrirPitch(m) },
       { label: '📄 Propuesta PDF', onClick: () => abrirPropuesta(m) },
       { label: '📊 Reporte', onClick: () => window.open(`/reporte/${encodeURIComponent(m.id)}`, '_blank') },
+      {
+        label: '🔎 Analizar cuenta', busy: 'Buscando…',
+        onClick: async ({ get }) => {
+          const usuario = get('instagram');
+          if (!usuario) throw new Error('Escribe el @usuario de Instagram de la marca.');
+          const st = await api('/api/radar/cuenta', { method: 'POST', body: { usuario, marca_id: m.id } });
+          await reload();
+          alert(resumenCuenta(st));
+        },
+      },
     ] : [],
   });
+  if (m.ig_seguidores != null) {
+    const box = document.createElement('p');
+    box.className = 'muted full'; box.style.margin = '0';
+    box.textContent = `Instagram: ${fmtInt(m.ig_seguidores)} seguidores${m.ig_engagement != null ? ` · engagement ${m.ig_engagement}%` : ''} (revisado ${String(m.ig_actualizado || '').slice(0, 10)}).`;
+    $('#modal-fields').appendChild(box);
+  }
+}
+function resumenCuenta(st) {
+  return [`@${st.usuario}${st.nombre ? ' · ' + st.nombre : ''}`,
+    `Seguidores: ${fmtInt(st.seguidores)} · publicaciones: ${fmtInt(st.publicaciones)}`,
+    st.likes_ocultos ? 'Engagement: oculta los likes' : `Interacciones promedio (últimos 12): ${fmtInt(st.interacciones_promedio)} · engagement ${st.engagement ?? '—'}%`,
+    `Publica ~${st.posts_por_semana ?? '—'} veces por semana · ${st.pct_reels ?? '—'}% reels`,
+    st.ultimo_post ? `Último post: ${st.ultimo_post.slice(0, 10)}` : '',
+    st.web ? `Web: ${st.web}` : ''].filter(Boolean).join('\n');
 }
 function categorias() { return (DB.config.presupuesto || []).map((c) => c.categoria).concat(['Colaboración', 'Otro ingreso']); }
 function editMov(m = {}) {
@@ -630,7 +672,7 @@ function vGrilla() {
     const futuro = s >= hoy && s <= addDays(hoy, 21);
     cells.push(`<div class="day ${out ? 'out' : ''} ${s === hoy ? 'today' : ''} ${!evs.length && futuro && !out ? 'empty-slot' : ''}" data-day="${s}">
       <span class="n">${d.getDate()}</span>
-      ${evs.map((p) => `<span class="ev ${esc(p.estado)}" data-post="${p.id}" title="${esc(p.titulo)} · ${esc(p.estado)}">${p.hora ? esc(p.hora) + ' ' : ''}${esc(p.titulo)}</span>`).join('')}
+      ${evs.map((p) => `<span class="ev ${esc(p.estado)}" data-post="${p.id}" draggable="${p.estado !== 'Publicado'}" title="${esc(p.titulo)} · ${esc(p.estado)}">${p.hora ? esc(p.hora) + ' ' : ''}${esc(p.titulo)}</span>`).join('')}
     </div>`);
   }
   const sinFecha = DB.posts.filter((p) => !p.fecha);
@@ -646,7 +688,7 @@ function vGrilla() {
       <button class="btn primary small" data-act="post">+ Publicación</button>
     </div>
   </div>
-  <p class="muted" style="margin:0">${conteo}. Los días con rayas, en las próximas 3 semanas, no tienen contenido. Toca un día para agregar.</p>
+  <p class="muted" style="margin:0">${conteo}. Los días con rayas, en las próximas 3 semanas, no tienen contenido. Toca un día para agregar; arrastra una publicación para cambiarla de día.</p>
   <div class="cal">${DIAS.map((d) => `<div class="dow">${d}</div>`).join('')}${cells.join('')}</div>
   <div class="grid two">
     <div class="card"><h3>Este mes</h3><div class="list">${lista.map(postRow).join('') || '<p class="empty">Sin publicaciones este mes.</p>'}</div></div>
@@ -663,6 +705,7 @@ function vMarcas() {
     <small>${esc(m.categoria || '')} · prioridad ${esc(m.prioridad || '-')}</small>
     ${m.idea ? `<small>${esc(m.idea)}</small>` : ''}
     ${m.monto ? `<small><b>${esc(m.monto)}</b></small>` : ''}
+    ${m.ig_seguidores != null ? `<small>${esc(m.instagram || '')} · ${fmtInt(m.ig_seguidores)} seg.${m.ig_engagement != null ? ` · ${m.ig_engagement}%` : ''}</small>` : ''}
     ${m.seguimiento ? `<span class="${m.seguimiento <= hoy ? 'due' : 'muted'}" style="font-size:12px">Seguimiento: ${esc(m.seguimiento)}</span>` : ''}
     <select data-move="${m.id}" aria-label="Mover ${esc(m.nombre)}">${ESTADOS_MARCA.map((e) => `<option ${e === m.estado ? 'selected' : ''}>${esc(e)}</option>`).join('')}</select>
   </div>`;
@@ -839,12 +882,114 @@ function vContenido() {
       <td>${esc((x.fecha || '').slice(0, 10))}</td><td>${esc(x.tipo)}</td><td style="max-width:260px"><small>${esc((x.texto || '').slice(0, 90))}</small></td>
       <td class="num"><b>${fmt(x.alcance)}</b></td><td class="num">${fmt(x.vistas)}</td><td class="num">${fmt(x.likes)}</td><td class="num">${fmt(x.comentarios)}</td><td class="num">${fmt(x.guardados)}</td><td class="num">${fmt(x.compartidos)}</td></tr>`).join('') || '<tr><td colspan="10" class="empty">Sin publicaciones.</td></tr>'}</tbody>
   </table></div></div>
+  <div class="grid two">
+    <div class="card"><h3>Mejor día y hora</h3>${analisisHorario(media)}</div>
+    <div class="card"><h3>Hashtags que más rinden</h3>${analisisHashtags(media)}</div>
+  </div>
+  <div class="card"><div class="section-head"><h3>Comentarios por responder</h3><button class="btn ghost small" data-act="comentarios">Cargar comentarios</button></div>
+    <div id="comentarios"><p class="empty">Responder en la primera hora ayuda al alcance. Toca "Cargar comentarios".</p></div></div>
+  ${vRadar()}
   <div class="card"><h3>Meta Ads este mes</h3>
     ${ads ? `<p>Gasto: <b>${esc(ads.moneda)} ${fmtInt(ads.gasto_mes)}</b> · alcance ${fmtInt(ads.alcance)} · ${fmtInt(ads.clics)} clics. Se registra solo en Presupuesto.</p>
     ${ads.campanas.length ? `<div class="table-wrap"><table><thead><tr><th>Campaña</th><th class="num">Gasto</th><th class="num">Alcance</th><th class="num">Clics</th><th class="num">Costo por clic</th></tr></thead><tbody>
     ${ads.campanas.map((c) => `<tr><td>${esc(c.nombre)}</td><td class="num">${fmtInt(c.gasto)}</td><td class="num">${fmtInt(c.alcance)}</td><td class="num">${fmtInt(c.clics)}</td><td class="num">${c.clics ? fmtInt(c.gasto / c.clics) : '—'}</td></tr>`).join('')}
     </tbody></table></div>` : '<p class="empty">Sin campañas activas este mes.</p>'}` : '<p class="empty">Sin datos de anuncios.</p>'}
   </div>`;
+}
+
+function rendimiento(x) { return Number(x.alcance ?? x.vistas ?? 0) || (Number(x.interacciones) || 0) * 10; }
+function analisisHorario(media) {
+  const pub = media.filter((x) => x.fecha);
+  if (pub.length < 6) return `<p class="empty">Con ${pub.length} publicación(es) todavía no hay patrón. Desde 6 posts aparece aquí el día y la hora con más alcance.</p>`;
+  const hora = (iso) => Number(new Intl.DateTimeFormat('es-CL', { timeZone: 'America/Santiago', hour: '2-digit', hour12: false }).format(new Date(iso)));
+  const dia = (iso) => (new Date(new Date(iso).toLocaleString('en-US', { timeZone: 'America/Santiago' })).getDay() + 6) % 7;
+  const franjas = [['Mañana', 6, 12], ['Tarde', 12, 18], ['Noche', 18, 24], ['Madrugada', 0, 6]];
+  const agrupar = (keyFn, etiquetas) => {
+    const g = {};
+    pub.forEach((x) => { const k = keyFn(x); (g[k] = g[k] || []).push(rendimiento(x)); });
+    return Object.entries(g).map(([k, v]) => ({ k: etiquetas ? etiquetas[k] : k, n: v.length, prom: v.reduce((a, b) => a + b, 0) / v.length })).sort((a, b) => b.prom - a.prom);
+  };
+  const porDia = agrupar((x) => dia(x.fecha), DIAS);
+  const porFranja = agrupar((x) => { const h = hora(x.fecha); return franjas.find(([, a, b]) => h >= a && h < b)[0]; });
+  const max = Math.max(...porDia.map((x) => x.prom), 1);
+  const barras = (arr) => arr.map((x) => `<div class="hbar"><span>${esc(x.k)} <small class="muted">(${x.n})</small></span><div class="bar"><span style="width:${(x.prom / max) * 100}%"></span></div><b>${fmtInt(x.prom)}</b></div>`).join('');
+  return `<p style="margin-top:0">Mejor día: <b>${esc(porDia[0].k)}</b> · mejor franja: <b>${esc(porFranja[0].k)}</b> (alcance promedio).</p>${barras(porDia)}<p class="muted" style="margin:10px 0 4px">Por franja</p>${barras(porFranja)}`;
+}
+function analisisHashtags(media) {
+  const g = {};
+  media.forEach((x) => (x.hashtags || []).forEach((h) => { (g[h] = g[h] || []).push(rendimiento(x)); }));
+  const arr = Object.entries(g).map(([h, v]) => ({ h, n: v.length, prom: v.reduce((a, b) => a + b, 0) / v.length })).sort((a, b) => b.prom - a.prom);
+  if (!arr.length) return '<p class="empty">Aún no hay hashtags en las publicaciones sincronizadas (se actualiza en la próxima sincronización).</p>';
+  return `<div class="table-wrap"><table><thead><tr><th>Hashtag</th><th class="num">Usos</th><th class="num">Alcance prom.</th></tr></thead><tbody>${arr.slice(0, 12).map((x) => `<tr><td>${esc(x.h)}</td><td class="num">${x.n}</td><td class="num"><b>${fmtInt(x.prom)}</b></td></tr>`).join('')}</tbody></table></div>`;
+}
+let COMENTARIOS = [];
+async function cargarComentarios() {
+  const box = $('#comentarios');
+  const r = await api('/api/comentarios');
+  COMENTARIOS = r.comentarios;
+  const pend = COMENTARIOS.filter((c) => !c.respondido);
+  if (!box) return;
+  if (!COMENTARIOS.length) { box.innerHTML = '<p class="empty">No hay comentarios en las últimas 10 publicaciones.</p>'; return; }
+  box.innerHTML = `<p class="muted" style="margin-top:0">${pend.length} sin responder de ${COMENTARIOS.length}.</p>` + [...pend, ...COMENTARIOS.filter((c) => c.respondido)].map((c) => `
+    <div class="comment ${c.respondido ? 'done' : ''}" data-stop>
+      <div><b>@${esc(c.usuario)}</b> <small class="muted">${esc((c.fecha || '').slice(0, 16).replace('T', ' '))} · en <a href="${esc(c.post_link)}" target="_blank" rel="noopener">${esc(c.post || 'post')}</a></small></div>
+      <p>${esc(c.texto)}</p>
+      ${c.respuestas.map((r2) => `<small class="reply">↳ <b>@${esc(r2.usuario)}</b> ${esc(r2.texto)}</small>`).join('')}
+      ${c.respondido ? '<small class="muted">✓ Respondido</small>' : `<div class="reply-form"><input aria-label="Respuesta a @${esc(c.usuario)}" placeholder="Respuesta de Maia…" data-reply-input="${esc(c.id)}"><button type="button" class="btn ghost small ai" data-reply-ai="${esc(c.id)}">✨ Sugerir</button><button type="button" class="btn primary small" data-reply-send="${esc(c.id)}">Responder</button></div>`}
+    </div>`).join('');
+}
+async function accionComentario(t) {
+  const ai = t.closest('[data-reply-ai]')?.dataset.replyAi;
+  const send = t.closest('[data-reply-send]')?.dataset.replySend;
+  const id = ai || send;
+  if (!id) return false;
+  const c = COMENTARIOS.find((x) => x.id === id);
+  const inp = document.querySelector(`[data-reply-input="${CSS.escape(id)}"]`);
+  const btn = t.closest('button');
+  const old = btn.textContent; btn.disabled = true;
+  try {
+    if (ai) {
+      btn.textContent = '…';
+      const r = await api('/api/ai/respuesta', { method: 'POST', body: { comentario: c.texto, post: c.post } });
+      if (r.texto === 'NO_RESPONDER') toast('La IA sugiere no responder (spam u ofensivo).');
+      else inp.value = r.texto;
+      if (r.plantilla) toast('Respuesta de plantilla (agrega la API key de Anthropic para personalizarla).');
+    } else {
+      const texto = inp.value.trim();
+      if (!texto) throw new Error('Escribe la respuesta.');
+      if (!confirm(`¿Responder a @${c.usuario} en Instagram?\n\n"${texto}"`)) return true;
+      btn.textContent = 'Enviando…';
+      await api(`/api/comentarios/${encodeURIComponent(id)}/responder`, { method: 'POST', body: { texto } });
+      toast('Respuesta publicada');
+      await cargarComentarios();
+    }
+  } catch (err) { alert(err.message); } finally { btn.disabled = false; btn.textContent = old; }
+  return true;
+}
+function vRadar() {
+  const cuentas = DB.radar?.cuentas || {};
+  const propio = DB.meta?.instagram?.username;
+  const lista = [...new Set([...(propio ? [propio] : []), ...(DB.config.referentes || [])])];
+  const filas = lista.map((u) => ({ u, st: cuentas[u] }));
+  const fmt = (n) => (n == null ? '—' : fmtInt(n));
+  return `<div class="card"><div class="section-head"><h3>Radar de referentes</h3><div class="cal-head"><button class="btn ghost small" data-act="referentes">Editar lista</button><button class="btn ghost small" data-act="radar">Actualizar</button></div></div>
+    <p class="muted" style="margin-top:0">Compara a Maia con otras cuentas (otros creadores o influencers IA). Solo funciona con cuentas profesionales.${DB.radar?.fecha ? ' Actualizado ' + esc(DB.radar.fecha.slice(0, 16).replace('T', ' ')) + '.' : ''}</p>
+    ${filas.length ? `<div class="table-wrap"><table><thead><tr><th>Cuenta</th><th class="num">Seguidores</th><th class="num">Engagement</th><th class="num">Inter. prom.</th><th class="num">Posts/sem</th><th class="num">% reels</th><th>Último post</th></tr></thead><tbody>
+    ${filas.map(({ u, st }) => `<tr${u === propio ? ' class="me"' : ''}><td><a href="https://www.instagram.com/${esc(u)}/" target="_blank" rel="noopener">@${esc(u)}</a>${u === propio ? ' <small class="muted">(Maia)</small>' : ''}</td>
+      <td class="num"><b>${fmt(st?.seguidores)}</b></td><td class="num">${st?.likes_ocultos ? 'oculto' : st?.engagement != null ? st.engagement + '%' : '—'}</td><td class="num">${fmt(st?.interacciones_promedio)}</td><td class="num">${st?.posts_por_semana ?? '—'}</td><td class="num">${st?.pct_reels != null ? st.pct_reels + '%' : '—'}</td><td>${esc((st?.ultimo_post || '').slice(0, 10)) || '—'}</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="empty">Agrega cuentas con "Editar lista".</p>'}</div>`;
+}
+function editReferentes() {
+  openModal({
+    title: 'Cuentas de referencia',
+    fields: [{ name: 'lista', label: 'Una cuenta por línea (@usuario o link de Instagram)', type: 'textarea', full: true }],
+    values: { lista: (DB.config.referentes || []).map((u) => '@' + u).join('\n') },
+    onSave: async (d) => {
+      await api('/api/radar/referentes', { method: 'PUT', body: { referentes: d.lista.split(/[\n,]+/) } });
+      await reload();
+      toast('Lista guardada. Toca "Actualizar" para traer los datos.');
+    },
+  });
 }
 
 // ---------- ajustes ----------
@@ -940,9 +1085,46 @@ async function submitAjustes(form) {
 }
 
 // ---------- eventos ----------
+async function moverPost(id, dia) {
+  const p = DB.posts.find((x) => x.id === id);
+  if (!p || p.fecha === dia) return;
+  if (p.estado === 'Publicado') return toast('Ya está publicada; no se puede mover.');
+  if (dia < todayStr() && !confirm('Ese día ya pasó. ¿Moverla igual?')) return;
+  if (p.auto_publicar && !confirm(`"${p.titulo}" se publica sola. ¿Moverla al ${dia} a las ${p.hora || '19:30'}?`)) return;
+  await saveItem('posts', id, { fecha: dia });
+  toast(`Movida al ${dia}`);
+}
+function bindDrag(root) {
+  root.addEventListener('dragstart', (e) => {
+    const ev = e.target.closest?.('[data-post][draggable="true"]');
+    if (!ev) return;
+    e.dataTransfer.setData('text/plain', ev.dataset.post);
+    e.dataTransfer.effectAllowed = 'move';
+    ev.classList.add('dragging');
+  });
+  root.addEventListener('dragend', (e) => { e.target.classList?.remove('dragging'); root.querySelectorAll('.drop').forEach((x) => x.classList.remove('drop')); });
+  root.addEventListener('dragover', (e) => {
+    const d = e.target.closest?.('[data-day]');
+    if (!d) return;
+    e.preventDefault();
+    root.querySelectorAll('.drop').forEach((x) => x !== d && x.classList.remove('drop'));
+    d.classList.add('drop');
+  });
+  root.addEventListener('drop', async (e) => {
+    const d = e.target.closest?.('[data-day]');
+    const id = e.dataTransfer.getData('text/plain');
+    if (!d || !id) return;
+    e.preventDefault();
+    d.classList.remove('drop');
+    try { await moverPost(id, d.dataset.day); } catch (err) { alert(err.message); }
+  });
+}
+bindDrag($('#view'));
+
 function bind(root) {
   root.onclick = async (e) => {
     const t = e.target;
+    if (await accionComentario(t)) return;
     if (t.closest('[data-stop]')) {
       const c = t.closest('[data-copy]');
       if (c) { e.stopPropagation(); navigator.clipboard.writeText(c.dataset.copy).then(() => toast('Copiado')); }
@@ -964,6 +1146,9 @@ function bind(root) {
         sync: () => run(async () => { try { await api('/api/integrations/meta/sync', { method: 'POST' }); toast('Datos de Meta actualizados'); } finally { await reload(); } }, 'Sincronizando…'),
         'meta-off': () => run(async () => { if (!confirm('¿Quitar el token de Meta?')) return; await api('/api/integrations', { method: 'PUT', body: { meta_token: '' } }); loadAjustes(); }),
         'ai-off': () => run(async () => { if (!confirm('¿Quitar la API key?')) return; await api('/api/integrations', { method: 'PUT', body: { anthropic_key: '' } }); loadAjustes(); }),
+        comentarios: () => run(cargarComentarios, 'Cargando…'),
+        referentes: editReferentes,
+        radar: () => run(async () => { const r = await api('/api/radar/actualizar', { method: 'POST' }); await reload(); if (r.errores.length) alert('Algunas cuentas no se pudieron leer:\n' + r.errores.join('\n')); else toast('Radar actualizado'); }, 'Actualizando…'),
         update: () => run(async () => { const r = await api('/api/admin/update', { method: 'POST' }); alert(r.message); if (r.updated) setTimeout(() => location.reload(), 6000); }, 'Actualizando…'),
       };
       acts[act]();
