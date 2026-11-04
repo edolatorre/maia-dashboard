@@ -1012,28 +1012,36 @@ function lamDesdePost(p) {
 }
 function vLaminas() {
   const mias = DB.posts.filter((p) => p.origen === 'laminas').sort((a, b) => ((a.fecha || '9') > (b.fecha || '9') ? 1 : -1));
+  const primera = (p) => String(p.archivos || '').split(',')[0].trim().split(':')[0];
   return `
   <div class="section-head">
     <div><p class="eyebrow">Sin gastar créditos</p><h2>Láminas</h2></div>
     <div class="cal-head"><button class="btn ghost small" id="lam-nuevo-frase">+ Frase</button><button class="btn primary small" id="lam-nuevo">+ Carrusel</button></div>
   </div>
-  <p class="muted" style="margin:0">Arma carruseles y frases con fotos de Maia que ya existen. Al guardar quedan en <b>Aprobación</b> (no se publican solas) hasta que les des el visto bueno.</p>
-  <div id="lam-root"></div>
-  <div class="card"><h3>Mis láminas</h3><div class="list">${mias.map((p) => `<div class="row" data-lam-post="${p.id}">
-      <div class="date">${p.fecha ? `<b>${parseYmd(p.fecha).getDate()}</b><small>${MESES[parseYmd(p.fecha).getMonth()]}</small>` : '<small>sin fecha</small>'}</div>
-      <div class="main"><b>${esc(p.titulo)}</b><small>${esc(p.formato || '')} · ${(String(p.archivos || '').split(',').filter(Boolean).length)} lámina(s)${p.hora ? ' · ' + esc(p.hora) : ''}</small></div>
-      <span class="pill ${esc(p.estado)}">${esc(p.estado)}</span></div>`).join('') || '<p class="empty">Todavía no hay láminas guardadas.</p>'}</div></div>`;
+  <p class="muted" style="margin:0">Arma carruseles y frases con fotos de Maia que ya existen. Al guardar quedan en <b>Aprobación</b> (no se publican solas) hasta que les des el visto bueno. Toca una lámina guardada para verla y editarla.</p>
+  <div class="card"><h3>Mis láminas (${mias.length})</h3>
+    ${mias.length ? `<div class="lam-galeria">${mias.map((p) => `<button type="button" class="lam-item ${LAM?.postId === p.id ? 'on' : ''}" data-lam-post="${p.id}">
+      <img src="/m/${esc(primera(p))}" alt="" loading="lazy">
+      <span class="pill ${esc(p.estado)}">${esc(p.estado === 'Aprobación' ? 'Por aprobar' : p.estado)}</span>
+      <b>${esc(p.titulo.replace(/^(Frase|Carrusel): /, ''))}</b>
+      <small>${p.fecha ? esc(p.fecha.slice(8, 10) + ' ' + MESES[parseYmd(p.fecha).getMonth()]) : 'sin fecha'}${p.hora ? ' · ' + esc(p.hora) : ''} · ${String(p.archivos || '').split(',').filter(Boolean).length} lám.</small>
+    </button>`).join('')}</div>` : '<p class="empty">Todavía no hay láminas guardadas.</p>'}
+  </div>
+  <div id="lam-root"></div>`;
 }
 async function montarLaminas() {
   const root = $('#lam-root');
   if (!root) return;
   try { FOTOS = (await api('/api/fotos')).fotos; } catch { FOTOS = []; }
-  if (!LAM) lamNuevo();
+  if (!LAM) {
+    const mias = DB.posts.filter((p) => p.origen === 'laminas').sort((a, b) => ((a.fecha || '9') > (b.fecha || '9') ? 1 : -1));
+    if (mias.length) lamDesdePost(mias[0]); else lamNuevo();
+  }
   pintarLaminas();
   $('#lam-nuevo').onclick = () => { lamNuevo('carrusel'); pintarLaminas(); };
   $('#lam-nuevo-frase').onclick = () => { lamNuevo('frase'); pintarLaminas(); };
   document.querySelectorAll('[data-lam-post]').forEach((el) => {
-    el.onclick = (e) => { e.stopPropagation(); lamDesdePost(DB.posts.find((p) => p.id === el.dataset.lamPost)); pintarLaminas(); window.scrollTo(0, 0); };
+    el.onclick = (e) => { e.stopPropagation(); lamDesdePost(DB.posts.find((p) => p.id === el.dataset.lamPost)); render(); setTimeout(() => $('#lam-root')?.scrollIntoView({ behavior: 'smooth' }), 50); };
   });
 }
 function pintarLaminas() {
