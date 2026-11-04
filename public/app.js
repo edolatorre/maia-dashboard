@@ -566,10 +566,11 @@ function alertas() {
 function render() {
   if (!DB) return;
   const v = $('#view');
-  const fn = { resumen: vResumen, grilla: vGrilla, marcas: vMarcas, presupuesto: vPresupuesto, ideas: vIdeas, contenido: vContenido, tareas: vTareas, recursos: vRecursos, ajustes: vAjustes }[view];
+  const fn = { resumen: vResumen, grilla: vGrilla, marcas: vMarcas, presupuesto: vPresupuesto, ideas: vIdeas, contenido: vContenido, laminas: vLaminas, tareas: vTareas, recursos: vRecursos, ajustes: vAjustes }[view];
   v.innerHTML = fn();
   bind(v);
   if (view === 'ajustes') loadAjustes();
+  if (view === 'laminas') montarLaminas();
 }
 
 function postRow(p) {
@@ -990,6 +991,161 @@ function editReferentes() {
       toast('Lista guardada. Toca "Actualizar" para traer los datos.');
     },
   });
+}
+
+// ---------- láminas (carruseles y frases sin créditos) ----------
+let LAM = null;
+let FOTOS = [];
+function lamNuevo(tipo = 'carrusel') {
+  LAM = tipo === 'frase'
+    ? { postId: null, titulo: 'Frase', texto: '', fecha: '', hora: '', sel: 0, slides: [{ plantilla: 'frase', titulo: 'Descansar también es productivo.', texto: '', foto: FOTOS[0]?.nombre || '' }] }
+    : { postId: null, titulo: 'Nuevo carrusel', texto: '', fecha: '', hora: '', sel: 0, slides: [
+      { plantilla: 'portada', etiqueta: 'Guarda este post', titulo: 'Título del carrusel', texto: '', foto: FOTOS[0]?.nombre || '' },
+      { plantilla: 'tip', numero: 1, titulo: 'Primer tip', texto: 'Explica el tip en dos o tres líneas.', foto: '' },
+      { plantilla: 'cierre', titulo: '¿Cuál agregarías?', texto: '', foto: FOTOS[0]?.nombre || '' },
+    ] };
+}
+function lamDesdePost(p) {
+  let slides = [];
+  try { slides = JSON.parse(p.laminas || '[]'); } catch { slides = []; }
+  LAM = { postId: p.id, titulo: p.titulo || '', texto: p.texto || '', fecha: p.fecha || '', hora: p.hora || '', sel: 0, slides };
+}
+function vLaminas() {
+  const mias = DB.posts.filter((p) => p.origen === 'laminas').sort((a, b) => ((a.fecha || '9') > (b.fecha || '9') ? 1 : -1));
+  return `
+  <div class="section-head">
+    <div><p class="eyebrow">Sin gastar créditos</p><h2>Láminas</h2></div>
+    <div class="cal-head"><button class="btn ghost small" id="lam-nuevo-frase">+ Frase</button><button class="btn primary small" id="lam-nuevo">+ Carrusel</button></div>
+  </div>
+  <p class="muted" style="margin:0">Arma carruseles y frases con fotos de Maia que ya existen. Al guardar quedan en <b>Aprobación</b> (no se publican solas) hasta que les des el visto bueno.</p>
+  <div id="lam-root"></div>
+  <div class="card"><h3>Mis láminas</h3><div class="list">${mias.map((p) => `<div class="row" data-lam-post="${p.id}">
+      <div class="date">${p.fecha ? `<b>${parseYmd(p.fecha).getDate()}</b><small>${MESES[parseYmd(p.fecha).getMonth()]}</small>` : '<small>sin fecha</small>'}</div>
+      <div class="main"><b>${esc(p.titulo)}</b><small>${esc(p.formato || '')} · ${(String(p.archivos || '').split(',').filter(Boolean).length)} lámina(s)${p.hora ? ' · ' + esc(p.hora) : ''}</small></div>
+      <span class="pill ${esc(p.estado)}">${esc(p.estado)}</span></div>`).join('') || '<p class="empty">Todavía no hay láminas guardadas.</p>'}</div></div>`;
+}
+async function montarLaminas() {
+  const root = $('#lam-root');
+  if (!root) return;
+  try { FOTOS = (await api('/api/fotos')).fotos; } catch { FOTOS = []; }
+  if (!LAM) lamNuevo();
+  pintarLaminas();
+  $('#lam-nuevo').onclick = () => { lamNuevo('carrusel'); pintarLaminas(); };
+  $('#lam-nuevo-frase').onclick = () => { lamNuevo('frase'); pintarLaminas(); };
+  document.querySelectorAll('[data-lam-post]').forEach((el) => {
+    el.onclick = (e) => { e.stopPropagation(); lamDesdePost(DB.posts.find((p) => p.id === el.dataset.lamPost)); pintarLaminas(); window.scrollTo(0, 0); };
+  });
+}
+function pintarLaminas() {
+  const root = $('#lam-root');
+  if (!root || !LAM) return;
+  const s = LAM.slides[LAM.sel] || LAM.slides[0];
+  const campo = (k, label, type = 'text') => `<label>${label}<${type === 'textarea' ? 'textarea' : 'input'} data-lam="${k}" ${type === 'number' ? 'type="number" min="1" max="10"' : ''} ${type !== 'textarea' ? `value="${esc(s?.[k] ?? '')}"` : ''}>${type === 'textarea' ? esc(s?.[k] ?? '') + '</textarea>' : ''}</label>`;
+  root.innerHTML = `
+  <div class="lam-grid">
+    <div class="card stack">
+      <div class="fields">
+        <label class="full">Nombre de la publicación<input data-lam-post-field="titulo" value="${esc(LAM.titulo)}"></label>
+        <label>Fecha<input type="date" data-lam-post-field="fecha" value="${esc(LAM.fecha)}"></label>
+        <label>Hora<input type="time" data-lam-post-field="hora" value="${esc(LAM.hora)}"></label>
+      </div>
+      <div class="lam-slides">${LAM.slides.map((x, i) => `<button type="button" class="lam-tab ${i === LAM.sel ? 'on' : ''}" data-lam-sel="${i}">${i + 1}. ${esc(Laminas.PLANTILLAS[x.plantilla]?.split(' ')[0] || x.plantilla)}</button>`).join('')}
+        <button type="button" class="btn ghost small" id="lam-add">+ Lámina</button></div>
+      ${s ? `<div class="fields">
+        <label>Plantilla<select data-lam="plantilla">${Object.entries(Laminas.PLANTILLAS).map(([k, v]) => `<option value="${k}" ${k === s.plantilla ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label>
+        ${s.plantilla === 'tip' ? campo('numero', 'Número', 'number') : campo('etiqueta', 'Etiqueta (opcional)')}
+        <label class="full">${s.plantilla === 'frase' ? 'Frase' : 'Título'}<textarea data-lam="titulo" style="min-height:60px">${esc(s.titulo || '')}</textarea></label>
+        <label class="full">Texto<textarea data-lam="texto">${esc(s.texto || '')}</textarea></label>
+        <label class="full">Encuadre de la foto (arriba ↔ abajo)<input type="range" min="0" max="1" step="0.05" data-lam="foco" value="${esc(s.foco ?? 0.35)}"></label>
+      </div>
+      <div><b style="font-size:13px">Foto</b> <small class="muted">(toca para elegir; en tips es opcional)</small>
+        <div class="lam-fotos">
+          <button type="button" class="lam-foto ${!s.foto ? 'on' : ''}" data-lam-foto="">Sin foto</button>
+          ${FOTOS.map((f) => `<button type="button" class="lam-foto ${f.nombre === s.foto ? 'on' : ''}" data-lam-foto="${esc(f.nombre)}" title="${esc(f.etiqueta || '')}"><img src="/m/${esc(f.nombre)}" alt="${esc(f.etiqueta || 'foto')}" loading="lazy"></button>`).join('')}
+        </div>
+        <div class="cal-head" style="margin-top:8px"><button type="button" class="btn ghost small" id="lam-foto-link">🔗 Agregar foto desde link</button><button type="button" class="btn ghost small" id="lam-foto-subir">📎 Subir foto</button></div>
+      </div>
+      <div class="cal-head"><button type="button" class="btn ghost small" id="lam-up">↑ Subir</button><button type="button" class="btn ghost small" id="lam-down">↓ Bajar</button><button type="button" class="btn ghost small" id="lam-dup">Duplicar</button><button type="button" class="btn danger small" id="lam-del">Quitar lámina</button></div>` : ''}
+      <label>Texto del post (caption)<textarea id="lam-caption" style="min-height:150px">${esc(LAM.texto)}</textarea></label>
+      <div id="lam-revisor" class="revisor"></div>
+      <div class="cal-head">
+        <button type="button" class="btn primary" id="lam-guardar">Guardar para aprobación</button>
+        ${LAM.postId ? '<button type="button" class="btn ghost" id="lam-aprobar">✅ Aprobar y programar</button><button type="button" class="btn ghost small" id="lam-descargar">Descargar lámina</button>' : '<button type="button" class="btn ghost small" id="lam-descargar">Descargar lámina</button>'}
+      </div>
+    </div>
+    <div class="lam-preview card"><canvas id="lam-canvas" width="1080" height="1350" aria-label="Vista previa de la lámina"></canvas>
+      <small class="muted">Lámina ${LAM.sel + 1} de ${LAM.slides.length} · 1080×1350 (4:5)</small></div>
+  </div>`;
+  lamPreview();
+  lamRevisor();
+  const set = (k, v) => { LAM.slides[LAM.sel][k] = k === 'numero' ? Number(v) || '' : k === 'foco' ? Number(v) : v; lamPreview(); };
+  root.querySelectorAll('[data-lam]').forEach((el) => {
+    el.oninput = () => set(el.dataset.lam, el.value);
+    if (el.tagName === 'SELECT') el.onchange = () => { set('plantilla', el.value); pintarLaminas(); };
+  });
+  root.querySelectorAll('[data-lam-post-field]').forEach((el) => { el.oninput = () => { LAM[el.dataset.lamPostField] = el.value; }; });
+  $('#lam-caption').oninput = (e) => { LAM.texto = e.target.value; lamRevisor(); };
+  root.querySelectorAll('[data-lam-sel]').forEach((el) => { el.onclick = () => { LAM.sel = Number(el.dataset.lamSel); pintarLaminas(); }; });
+  root.querySelectorAll('[data-lam-foto]').forEach((el) => { el.onclick = () => { LAM.slides[LAM.sel].foto = el.dataset.lamFoto; pintarLaminas(); }; });
+  const mover = (d) => { const i = LAM.sel, j = i + d; if (j < 0 || j >= LAM.slides.length) return; [LAM.slides[i], LAM.slides[j]] = [LAM.slides[j], LAM.slides[i]]; LAM.sel = j; pintarLaminas(); };
+  $('#lam-add').onclick = () => { if (LAM.slides.length >= 10) return alert('Máximo 10 láminas.'); const n = LAM.slides.filter((x) => x.plantilla === 'tip').length + 1; LAM.slides.splice(LAM.sel + 1, 0, { plantilla: 'tip', numero: n, titulo: 'Nuevo tip', texto: '', foto: '' }); LAM.sel += 1; pintarLaminas(); };
+  if ($('#lam-up')) {
+    $('#lam-up').onclick = () => mover(-1);
+    $('#lam-down').onclick = () => mover(1);
+    $('#lam-dup').onclick = () => { if (LAM.slides.length >= 10) return; LAM.slides.splice(LAM.sel + 1, 0, { ...LAM.slides[LAM.sel] }); LAM.sel += 1; pintarLaminas(); };
+    $('#lam-del').onclick = () => { if (LAM.slides.length <= 1) return; LAM.slides.splice(LAM.sel, 1); LAM.sel = Math.max(0, LAM.sel - 1); pintarLaminas(); };
+    $('#lam-foto-link').onclick = async () => {
+      const url = prompt('Pega el link de la foto (por ejemplo, de Higgsfield):');
+      if (!url) return;
+      try { const f = await api('/api/fotos', { method: 'POST', body: { url: url.trim() } }); FOTOS.unshift(f); LAM.slides[LAM.sel].foto = f.nombre; pintarLaminas(); toast('Foto agregada'); } catch (e) { alert(e.message); }
+    };
+    $('#lam-foto-subir').onclick = () => {
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/jpeg,image/png,image/webp';
+      inp.onchange = async () => {
+        try {
+          const file = inp.files[0];
+          const res = await fetch('/api/fotos/subir?name=' + encodeURIComponent(file.name), { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream', 'X-Requested-With': 'maia' }, body: file });
+          const f = await res.json(); if (!res.ok) throw new Error(f.error);
+          FOTOS.unshift(f); LAM.slides[LAM.sel].foto = f.nombre; pintarLaminas(); toast('Foto agregada');
+        } catch (e) { alert(e.message); }
+      };
+      inp.click();
+    };
+  }
+  $('#lam-descargar').onclick = async () => {
+    const cv = await Laminas.render(LAM.slides[LAM.sel], null, { pagina: LAM.sel + 1, total: LAM.slides.length });
+    const a = document.createElement('a'); a.href = cv.toDataURL('image/jpeg', 0.92); a.download = `lamina-${LAM.sel + 1}.jpg`; a.click();
+  };
+  $('#lam-guardar').onclick = async (e) => {
+    const b = e.target; b.disabled = true; b.textContent = 'Guardando…';
+    try {
+      const r = await Laminas.guardar({ postId: LAM.postId, titulo: LAM.titulo, texto: LAM.texto, fecha: LAM.fecha, hora: LAM.hora, slides: LAM.slides });
+      LAM.postId = r.id; await reload(); toast('Guardado en Aprobación (no se publica solo)');
+    } catch (err) { alert(err.message); }
+    b.disabled = false; b.textContent = 'Guardar para aprobación';
+  };
+  if ($('#lam-aprobar')) $('#lam-aprobar').onclick = async () => {
+    if (!LAM.fecha || !LAM.hora) return alert('Pon fecha y hora antes de aprobar.');
+    const bloq = window.Revisor ? Revisor.bloqueos({ texto: LAM.texto }) : [];
+    if (bloq.length) return alert(bloq.join('\n'));
+    if (!confirm(`¿Aprobar "${LAM.titulo}" y programarla para el ${LAM.fecha} a las ${LAM.hora}? (Guarda antes si hiciste cambios)`)) return;
+    await api(`/api/posts/${LAM.postId}`, { method: 'PUT', body: { estado: 'Programado', auto_publicar: true, fecha: LAM.fecha, hora: LAM.hora, pub_estado: '', pub_error: '' } });
+    await reload(); toast('Aprobada y programada');
+  };
+}
+let lamTimer = null;
+function lamPreview() {
+  clearTimeout(lamTimer);
+  lamTimer = setTimeout(() => {
+    const cv = $('#lam-canvas');
+    if (cv && LAM?.slides[LAM.sel]) Laminas.render(LAM.slides[LAM.sel], cv, { pagina: LAM.sel + 1, total: LAM.slides.length });
+  }, 120);
+}
+function lamRevisor() {
+  const box = $('#lam-revisor');
+  if (!box || !window.Revisor) return;
+  const ICON = { ok: '✓', error: '✕', aviso: '!', tip: 'i' };
+  box.innerHTML = '<b>Revisión del texto</b>' + Revisor.revisar({ texto: LAM.texto }).map((x) => `<span class="rv ${x.nivel}"><i>${ICON[x.nivel]}</i>${esc(x.msg)}</span>`).join('');
 }
 
 // ---------- ajustes ----------

@@ -47,6 +47,7 @@ function loadDb() {
   }
   for (const c of COLLECTIONS) if (!Array.isArray(db[c])) db[c] = [];
   if (!db.radar || typeof db.radar !== 'object') db.radar = { cuentas: {} };
+  if (!Array.isArray(db.fotos)) db.fotos = [];
   if (!Array.isArray(db.config.referentes)) db.config.referentes = [];
   saveDb();
 }
@@ -452,6 +453,38 @@ setInterval(() => {
 }, 60000);
 
 // ---------- datos ----------
+// ---------- biblioteca de fotos (para el generador de láminas) ----------
+app.get('/api/fotos', requireAuth, (req, res) => {
+  db.fotos = db.fotos.filter((f) => media.filePath(f.nombre));
+  res.json({ fotos: [...db.fotos].reverse() });
+});
+app.post('/api/fotos', requireAuth, async (req, res) => {
+  try {
+    const url = String(req.body?.url || '').trim();
+    const r = await media.fromUrl(url);
+    if (r.tipo !== 'imagen') throw new Error('Solo fotos (JPG, PNG o WEBP).');
+    const f = { nombre: r.nombre, etiqueta: String(req.body?.etiqueta || '').slice(0, 80), origen: url.slice(0, 300), fecha: new Date().toISOString() };
+    db.fotos.push(f);
+    saveDb();
+    res.json(f);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.put('/api/fotos/subir', requireAuth, async (req, res) => {
+  try {
+    const r = await media.fromRequest(req, req.query.name);
+    if (r.tipo !== 'imagen') throw new Error('Solo fotos (JPG, PNG o WEBP).');
+    const f = { nombre: r.nombre, etiqueta: String(req.query.etiqueta || '').slice(0, 80), origen: 'subida', fecha: new Date().toISOString() };
+    db.fotos.push(f);
+    saveDb();
+    res.json(f);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.delete('/api/fotos/:nombre', requireAuth, (req, res) => {
+  db.fotos = db.fotos.filter((f) => f.nombre !== req.params.nombre);
+  saveDb();
+  res.json({ ok: true });
+});
+
 // ---------- radar de cuentas y comentarios ----------
 function igCtx() {
   const token = secrets.get('meta_token');

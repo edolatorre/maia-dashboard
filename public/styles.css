@@ -213,3 +213,16 @@ dialog::backdrop { background: rgba(15,42,51,.55); }
 .reply-form input { flex: 1 1 220px; }
 tr.me td { background: var(--sand); }
 @media (max-width: 600px) { .hbar { grid-template-columns: 80px 1fr 50px; } }
+
+/* Láminas */
+.lam-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .lam-grid { grid-template-columns: 1fr; } }
+.lam-preview { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.lam-preview canvas { width: 100%; max-width: 480px; height: auto; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.12); background: var(--sand); }
+.lam-slides { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.lam-tab { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.lam-tab.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.lam-fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; max-height: 240px; overflow-y: auto; margin-top: 6px; }
+.lam-foto { aspect-ratio: 4/5; border: 2px solid transparent; border-radius: 8px; overflow: hidden; padding: 0; background: var(--sand); cursor: pointer; font: inherit; font-size: 12px; color: var(--muted); }
+.lam-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lam-foto.on { border-color: var(--coral); }
