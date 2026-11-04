@@ -142,6 +142,8 @@
       // tip / texto: fondo crema
       ctx.fillStyle = C.cream; ctx.fillRect(0, 0, W, H);
       let y = 120;
+      const sinFoto = !im;
+      if (sinFoto) y = 300;
       if (im) {
         ctx.save(); roundRect(ctx, 80, 100, W - 160, 560, 36); ctx.clip();
         cover(ctx, im, 80, 100, W - 160, 560, foco); ctx.restore();
@@ -157,9 +159,10 @@
         ctx.fillText(slide.etiqueta.toUpperCase(), 80, y); y += 52;
       }
       const restante = H - 170 - y;
-      const ht = bloque(ctx, (slide.titulo || '').toUpperCase(), { x: 80, y, maxW: W - 160, maxH: Math.min(260, restante * 0.45), size: 72, minSize: 44, font: '600 {s}px Oswald, sans-serif', color: C.navy, lineH: 1.1 });
-      y += ht.height + 26;
-      if (slide.texto) bloque(ctx, slide.texto, { x: 80, y, maxW: W - 160, maxH: H - 170 - y, size: 40, minSize: 26, font: '400 {s}px "DM Sans", sans-serif', color: '#22404A', lineH: 1.4 });
+      const ht = bloque(ctx, (slide.titulo || '').toUpperCase(), { x: 80, y, maxW: W - 160, maxH: Math.min(sinFoto ? 340 : 260, restante * 0.45), size: sinFoto ? 96 : 72, minSize: 44, font: '600 {s}px Oswald, sans-serif', color: C.navy, lineH: 1.1 });
+      y += ht.height + (sinFoto ? 40 : 26);
+      if (sinFoto) { ctx.fillStyle = C.coral; ctx.fillRect(80, y, 120, 8); y += 48; }
+      if (slide.texto) bloque(ctx, slide.texto, { x: 80, y, maxW: W - 160, maxH: H - 170 - y, size: sinFoto ? 50 : 40, minSize: 26, font: '400 {s}px "DM Sans", sans-serif', color: '#22404A', lineH: 1.4 });
       pie(ctx, { claro: false, ...meta });
     }
     return canvas;
