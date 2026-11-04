@@ -235,3 +235,4 @@ tr.me td { background: var(--sand); }
 .lam-item .pill { position: absolute; top: 8px; left: 8px; }
 .lam-item.on { border-color: var(--coral); }
 .lam-item:hover { border-color: var(--teal); }
+.lam-preview canvas { cursor: pointer; }

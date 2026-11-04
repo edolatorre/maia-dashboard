@@ -1082,7 +1082,9 @@ function pintarLaminas() {
       </div>
     </div>
     <div class="lam-preview card"><canvas id="lam-canvas" width="1080" height="1350" aria-label="Vista previa de la lámina"></canvas>
-      <small class="muted">Lámina ${LAM.sel + 1} de ${LAM.slides.length} · 1080×1350 (4:5)</small></div>
+      <div class="cal-head"><button type="button" class="btn ghost small" id="lam-prev" ${LAM.sel === 0 ? 'disabled' : ''} aria-label="Lámina anterior">‹ Anterior</button>
+      <small class="muted">Lámina ${LAM.sel + 1} de ${LAM.slides.length}</small>
+      <button type="button" class="btn ghost small" id="lam-next" ${LAM.sel >= LAM.slides.length - 1 ? 'disabled' : ''} aria-label="Lámina siguiente">Siguiente ›</button></div></div>
   </div>`;
   lamPreview();
   lamRevisor();
@@ -1095,6 +1097,9 @@ function pintarLaminas() {
   $('#lam-caption').oninput = (e) => { LAM.texto = e.target.value; lamRevisor(); };
   root.querySelectorAll('[data-lam-sel]').forEach((el) => { el.onclick = () => { LAM.sel = Number(el.dataset.lamSel); pintarLaminas(); }; });
   root.querySelectorAll('[data-lam-foto]').forEach((el) => { el.onclick = () => { LAM.slides[LAM.sel].foto = el.dataset.lamFoto; pintarLaminas(); }; });
+  $('#lam-prev').onclick = () => { if (LAM.sel > 0) { LAM.sel -= 1; pintarLaminas(); } };
+  $('#lam-next').onclick = () => { if (LAM.sel < LAM.slides.length - 1) { LAM.sel += 1; pintarLaminas(); } };
+  $('#lam-canvas').onclick = () => { LAM.sel = (LAM.sel + 1) % LAM.slides.length; pintarLaminas(); };
   const mover = (d) => { const i = LAM.sel, j = i + d; if (j < 0 || j >= LAM.slides.length) return; [LAM.slides[i], LAM.slides[j]] = [LAM.slides[j], LAM.slides[i]]; LAM.sel = j; pintarLaminas(); };
   $('#lam-add').onclick = () => { if (LAM.slides.length >= 10) return alert('Máximo 10 láminas.'); const n = LAM.slides.filter((x) => x.plantilla === 'tip').length + 1; LAM.slides.splice(LAM.sel + 1, 0, { plantilla: 'tip', numero: n, titulo: 'Nuevo tip', texto: '', foto: '' }); LAM.sel += 1; pintarLaminas(); };
   if ($('#lam-up')) {
